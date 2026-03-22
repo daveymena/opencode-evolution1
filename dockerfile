@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
     chromium \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalación NATIVA de OpenCode
-RUN npm install -g opencode-ai --force
+# Instalación NATIVA de OpenCode y Claude Code
+RUN npm install -g opencode-ai @anthropic-ai/claude-code --force
 
 # Directorio de trabajo y persistencia
 WORKDIR /app
