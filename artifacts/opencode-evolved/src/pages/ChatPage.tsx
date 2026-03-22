@@ -14,9 +14,12 @@ import { WelcomeScreen } from '@/components/chat/WelcomeScreen';
 import { EditorArea } from '@/components/ide/EditorArea';
 import { Preview } from '@/components/ide/Preview';
 import { useIde } from '@/contexts/IdeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import ApiKeysPage from '@/pages/ApiKeysPage';
 import {
   Circle, Settings, HelpCircle, Code2, Globe,
-  MessageSquare, PanelLeftClose, PanelLeftOpen, ChevronRight
+  MessageSquare, PanelLeftClose, PanelLeftOpen, ChevronRight,
+  LogOut, Key, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -26,6 +29,7 @@ export default function ChatPage() {
   const [activeProjectId, setActiveProjectId] = useState<number | undefined>();
   const [rightTab, setRightTab] = useState<RightTab>('preview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showApiKeys, setShowApiKeys] = useState(false);
 
   // Resizable panels
   const [leftWidth, setLeftWidth] = useState(42); // % of main area
@@ -34,6 +38,7 @@ export default function ChatPage() {
 
   const queryClient = useQueryClient();
   const { openFiles } = useIde();
+  const { user, logout } = useAuth();
 
   const { data: project } = useGetProject(activeProjectId as number, {
     query: { enabled: !!activeProjectId, queryKey: ['/api/projects', activeProjectId] }
@@ -77,6 +82,8 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-[#0d0d0d] overflow-hidden text-gray-200 font-sans select-none">
+
+      {showApiKeys && <ApiKeysPage onClose={() => setShowApiKeys(false)} />}
 
       {/* ── Project Sidebar ── */}
       <AnimatePresence initial={false}>
@@ -126,11 +133,26 @@ export default function ChatPage() {
                 {project?.model && <span className="text-indigo-400 ml-1 uppercase text-[10px]">{project.model}</span>}
               </div>
             )}
-            <button className="p-1.5 text-gray-600 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-              <HelpCircle className="w-4 h-4" />
+            {/* Usuario actual */}
+            {user && (
+              <div className="flex items-center gap-1.5 text-[11px] text-gray-500 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1 rounded-full">
+                <User className="w-3 h-3" />
+                <span>{user.name}</span>
+              </div>
+            )}
+            <button
+              onClick={() => setShowApiKeys(true)}
+              title="API Keys"
+              className="p-1.5 text-gray-600 hover:text-white hover:bg-white/5 rounded-md transition-colors"
+            >
+              <Key className="w-4 h-4" />
             </button>
-            <button className="p-1.5 text-gray-600 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-              <Settings className="w-4 h-4" />
+            <button
+              onClick={logout}
+              title="Cerrar sesión"
+              className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-white/5 rounded-md transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </header>
