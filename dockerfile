@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Herramientas globales para ejecución y bots
-RUN npm install -g pnpm@10 pm2 tsx ts-node nodemon yarn
+RUN npm install -g pnpm@10 pm2 tsx ts-node nodemon yarn --force
 
 # OpenCode AI
 RUN npm install -g opencode-ai || true
@@ -75,7 +75,7 @@ RUN apt-get update && apt-get install -y \
     golang \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g pnpm@10 pm2 tsx ts-node yarn opencode-ai || true
+RUN npm install -g pnpm@10 pm2 tsx ts-node yarn opencode-ai --force || true
 
 WORKDIR /app
 
