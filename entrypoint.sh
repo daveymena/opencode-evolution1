@@ -34,9 +34,32 @@ cat > "$CONFIG_FILE" << 'EOF'
     "mistral":    { "options": { "apiKey": "{env:MISTRAL_API_KEY}" } },
     "groq":       { "options": { "apiKey": "{env:GROQ_API_KEY}" } },
     "openrouter": { "options": { "apiKey": "{env:OPENROUTER_API_KEY}" } }
-  }
+  },
+  "autoshare": false
 }
 EOF
+
+# Si hay una key de modelo con visión, establecerlo como default
+# Prioridad: Anthropic > Google > OpenAI > OpenRouter
+if [ -n "$ANTHROPIC_API_KEY" ]; then
+  DEFAULT_MODEL="anthropic/claude-sonnet-4-5"
+elif [ -n "$GOOGLE_API_KEY" ]; then
+  DEFAULT_MODEL="google/gemini-2.5-flash"
+elif [ -n "$OPENAI_API_KEY" ]; then
+  DEFAULT_MODEL="openai/gpt-4o"
+elif [ -n "$OPENROUTER_API_KEY" ]; then
+  DEFAULT_MODEL="openrouter/anthropic/claude-sonnet-4-5"
+fi
+
+if [ -n "$DEFAULT_MODEL" ]; then
+  # Inyectar model default en el config
+  node -e "
+    const fs = require('fs');
+    const cfg = JSON.parse(fs.readFileSync('$CONFIG_FILE','utf8'));
+    cfg.model = '$DEFAULT_MODEL';
+    fs.writeFileSync('$CONFIG_FILE', JSON.stringify(cfg, null, 2));
+  " 2>/dev/null && echo "[entrypoint] Modelo con visión por defecto: $DEFAULT_MODEL"
+fi
 echo "[entrypoint] opencode.json OK"
 
 # ── 3. Git workspace ──────────────────────────────────────────────────────────
