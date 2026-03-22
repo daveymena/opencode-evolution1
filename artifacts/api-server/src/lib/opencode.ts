@@ -12,8 +12,8 @@ export async function checkOpenCodeStatus(): Promise<{
   message: string;
 }> {
   try {
-    const { stdout } = await execFileAsync("opencode", ["--version"], {
-      timeout: 5000,
+    const { stdout } = await execFileAsync("/usr/local/bin/opencode", ["--version"], {
+      timeout: 10000,
     });
     return {
       available: true,
@@ -50,10 +50,10 @@ export async function runOpenCodeQuery(
 
   try {
     const { stdout, stderr } = await execFileAsync(
-      "opencode",
+      "/usr/local/bin/opencode",
       ["run", prompt],
       {
-        timeout: 60000,
+        timeout: 120000,
         maxBuffer: 1024 * 1024 * 10,
       }
     );
@@ -65,12 +65,16 @@ export async function runOpenCodeQuery(
     return stdout.trim() || "OpenCode completed without output.";
   } catch (err: unknown) {
     const error = err as { message?: string; stderr?: string; stdout?: string };
-    logger.error({ err }, "OpenCode execution failed");
+    logger.error({ 
+      err: error.message, 
+      stderr: error.stderr, 
+      stdout: error.stdout 
+    }, "OpenCode execution failed");
 
     if (error.stdout && error.stdout.trim()) {
       return error.stdout.trim();
     }
 
-    throw new Error(`OpenCode failed: ${error.message ?? "unknown error"}`);
+    throw new Error(`OpenCode failed (stderr: ${error.stderr ?? "none"}): ${error.message ?? "unknown error"}`);
   }
 }
