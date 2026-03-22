@@ -82,6 +82,7 @@ WORKDIR /app
 COPY --from=base /app/artifacts/api-server/dist ./artifacts/api-server/dist
 COPY --from=base /app/artifacts/opencode-evolved/dist ./artifacts/opencode-evolved/dist
 COPY --from=base /app/artifacts/api-server/package.json ./artifacts/api-server/package.json
+COPY --from=base /app/lib/db/drizzle ./lib/db/drizzle
 COPY --from=base /app/pnpm-workspace.yaml ./
 COPY --from=base /app/package.json ./
 COPY --from=base /app/pnpm-lock.yaml ./
