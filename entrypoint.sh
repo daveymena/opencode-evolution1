@@ -68,12 +68,46 @@ git config --global user.email "${GIT_USER_EMAIL:-opencode@localhost}"
 git config --global --add safe.directory "$WORKSPACE"
 git config --global init.defaultBranch main
 
+# Configurar autenticación HTTPS con token si se provee
+# Variable: GIT_TOKEN (Personal Access Token de GitHub/GitLab)
+if [ -n "$GIT_TOKEN" ] && [ -n "$GIT_REPO_URL" ]; then
+  # Extraer el host de la URL para configurar el credential helper
+  GIT_HOST=$(echo "$GIT_REPO_URL" | sed 's|https://||' | sed 's|/.*||')
+  git config --global credential.helper store
+  # Escribir credenciales en el store
+  echo "https://oauth2:${GIT_TOKEN}@${GIT_HOST}" > /root/.git-credentials
+  echo "https://${GIT_TOKEN}:x-oauth-basic@${GIT_HOST}" >> /root/.git-credentials
+  chmod 600 /root/.git-credentials
+  echo "[entrypoint] Git token configurado para $GIT_HOST"
+fi
+
+# Configurar SSH si se provee clave privada
+# Variable: GIT_SSH_KEY (contenido de la clave privada, en base64)
+if [ -n "$GIT_SSH_KEY" ]; then
+  mkdir -p /root/.ssh
+  echo "$GIT_SSH_KEY" | base64 -d > /root/.ssh/id_rsa 2>/dev/null || echo "$GIT_SSH_KEY" > /root/.ssh/id_rsa
+  chmod 600 /root/.ssh/id_rsa
+  # Aceptar automáticamente fingerprints de hosts conocidos
+  ssh-keyscan github.com gitlab.com bitbucket.org >> /root/.ssh/known_hosts 2>/dev/null
+  chmod 644 /root/.ssh/known_hosts
+  echo "[entrypoint] SSH key configurada"
+fi
+
+# Construir URL con token embebido si es HTTPS y hay token
+EFFECTIVE_REPO_URL="$GIT_REPO_URL"
+if [ -n "$GIT_TOKEN" ] && [ -n "$GIT_REPO_URL" ]; then
+  # Insertar token en URL: https://TOKEN@github.com/user/repo.git
+  EFFECTIVE_REPO_URL=$(echo "$GIT_REPO_URL" | sed "s|https://|https://${GIT_TOKEN}@|")
+fi
+
 cd "$WORKSPACE"
 if [ -n "$GIT_REPO_URL" ]; then
   if [ ! -d ".git" ]; then
     echo "[entrypoint] Clonando $GIT_REPO_URL ..."
-    git clone "$GIT_REPO_URL" . 2>&1 || { git init; git remote add origin "$GIT_REPO_URL"; }
+    git clone "$EFFECTIVE_REPO_URL" . 2>&1 || { git init; git remote add origin "$EFFECTIVE_REPO_URL"; }
   else
+    # Actualizar remote con token por si cambió
+    git remote set-url origin "$EFFECTIVE_REPO_URL" 2>/dev/null || true
     echo "[entrypoint] Pull del repo..."
     git pull origin "${GIT_BRANCH:-main}" --rebase 2>&1 || true
   fi
