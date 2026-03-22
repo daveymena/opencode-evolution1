@@ -98,26 +98,58 @@ echo "[entrypoint] Workspace listo: $WORKSPACE"
 if [ -n "$OPENCLAW_GATEWAY_TOKEN" ]; then
   mkdir -p /root/.openclaw
 
+  # Prioridad de modelos:
+  # 1. Modelos Zen gratuitos de opencode (requiere OPENCODE_API_KEY)
+  # 2. Anthropic si hay key
+  # 3. OpenAI si hay key
+  # 4. Google si hay key
+  # 5. OpenRouter si hay key
+
+  OC_ENV_BLOCK=""
+
+  if [ -n "$OPENCODE_API_KEY" ]; then
+    # Modelos Zen gratuitos — Big Pickle es el más capaz actualmente
+    OC_MODEL="${OPENCLAW_MODEL:-opencode/big-pickle}"
+    OC_ENV_BLOCK="\"OPENCODE_API_KEY\":\"${OPENCODE_API_KEY}\""
+    echo "[entrypoint] OpenClaw usará modelos Zen gratuitos de opencode"
+  elif [ -n "$ANTHROPIC_API_KEY" ]; then
+    OC_MODEL="${OPENCLAW_MODEL:-anthropic/claude-sonnet-4-5}"
+    OC_ENV_BLOCK="\"ANTHROPIC_API_KEY\":\"${ANTHROPIC_API_KEY}\""
+  elif [ -n "$OPENAI_API_KEY" ]; then
+    OC_MODEL="${OPENCLAW_MODEL:-openai/gpt-4o}"
+    OC_ENV_BLOCK="\"OPENAI_API_KEY\":\"${OPENAI_API_KEY}\""
+  elif [ -n "$GOOGLE_API_KEY" ]; then
+    OC_MODEL="${OPENCLAW_MODEL:-google/gemini-2.5-flash}"
+    OC_ENV_BLOCK="\"GOOGLE_API_KEY\":\"${GOOGLE_API_KEY}\""
+  elif [ -n "$OPENROUTER_API_KEY" ]; then
+    OC_MODEL="${OPENCLAW_MODEL:-openrouter/anthropic/claude-sonnet-4-5}"
+    OC_ENV_BLOCK="\"OPENROUTER_API_KEY\":\"${OPENROUTER_API_KEY}\""
+  else
+    OC_MODEL="opencode/big-pickle"
+    echo "[entrypoint] ADVERTENCIA: Sin API keys — OpenClaw puede no funcionar"
+  fi
+
+  TELEGRAM_SECTION=""
+  [ -n "$TELEGRAM_BOT_TOKEN" ] && TELEGRAM_SECTION=",\"channels\":{\"telegram\":{\"botToken\":\"${TELEGRAM_BOT_TOKEN}\"}}"
+
   cat > /root/.openclaw/openclaw.json << OCEOF
 {
   "agent": {
-    "model": "${OPENCLAW_MODEL:-opencode/claude-opus-4-6}"
+    "model": "${OC_MODEL}"
   },
+  "env": { ${OC_ENV_BLOCK} },
   "gateway": {
     "port": 18789,
     "bind": "lan",
-    "auth": {
-      "mode": "token",
-      "token": "${OPENCLAW_GATEWAY_TOKEN}"
-    }
+    "auth": { "mode": "token", "token": "${OPENCLAW_GATEWAY_TOKEN}" }
   }
-  $([ -n "$TELEGRAM_BOT_TOKEN" ] && echo ",\"channels\":{\"telegram\":{\"botToken\":\"${TELEGRAM_BOT_TOKEN}\"}}")
+  ${TELEGRAM_SECTION}
 }
 OCEOF
 
-  echo "[entrypoint] Iniciando OpenClaw gateway en :18789..."
+  echo "[entrypoint] OpenClaw modelo: $OC_MODEL"
   oclaw gateway --allow-unconfigured --bind lan > /tmp/openclaw.log 2>&1 &
-  echo "[entrypoint] OpenClaw PID: $!"
+  echo "[entrypoint] OpenClaw gateway iniciado en :18789"
 else
   echo "[entrypoint] OPENCLAW_GATEWAY_TOKEN no configurado — OpenClaw desactivado"
 fi
