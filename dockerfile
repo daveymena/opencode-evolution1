@@ -87,6 +87,7 @@ COPY --from=base /app/package.json ./
 COPY --from=base /app/pnpm-lock.yaml ./
 
 RUN pnpm install --prod --frozen-lockfile
+RUN npm install express http-proxy-middleware
 
 COPY docker-serve.mjs ./
 
