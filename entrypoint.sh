@@ -1,5 +1,18 @@
-#!/bin/sh
 set -e
+
+# ==========================================
+# 🌌 Claude Code (Free Mode) Configuration
+# ==========================================
+# Usar Google AI Studio como backend gratuito
+export GOOGLE_API_KEY=AIzaSyCaSIKe84TTvkAitBf8Wv3C8tyQPrW8YuU
+export ANTHROPIC_API_KEY=AIzaSyCaSIKe84TTvkAitBf8Wv3C8tyQPrW8YuU
+export ANTHROPIC_BASE_URL=https://generativelanguage.googleapis.com/v1alpha/
+export ANTHROPIC_MODEL=gemini-1.5-pro-latest
+
+# Alias para facilitar el acceso
+alias claude="claude-code"
+echo "[entrypoint] Claude Code (Free Mode) configurado con éxito."
+
 
 AUTH_DIR="$HOME/.local/share/opencode"
 AUTH_FILE="$AUTH_DIR/auth.json"
@@ -88,5 +101,9 @@ cat > "$CONFIG_FILE" << 'EOF'
 EOF
 
 echo "[entrypoint] opencode.json generado con todos los providers"
+
+# Directorio persistente donde opencode trabaja y guarda archivos de código
+mkdir -p /root/workspace
+cd /root/workspace
 
 exec opencode web --hostname 0.0.0.0 --port 3000
