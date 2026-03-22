@@ -1,87 +1,165 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useIde } from '@/contexts/IdeContext';
-import { Globe, ExternalLink, RefreshCw, TerminalSquare } from 'lucide-react';
+import { Globe, ExternalLink, RefreshCw, ArrowLeft, ArrowRight, X, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function Preview() {
   const { openFiles, activeFileId } = useIde();
   const [refreshKey, setRefreshKey] = useState(0);
-  
+  const [urlInput, setUrlInput] = useState('');
+  const [currentUrl, setCurrentUrl] = useState('');
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
   const activeFile = openFiles.find(f => f.id === activeFileId);
   const isWebFile = activeFile?.name.match(/\.(html|css|js)$/i);
 
   const previewHtml = useMemo(() => {
-    if (!activeFile) return '';
-    if (activeFile.name.endsWith('.html')) {
-      if (activeFile.content.includes('</body>')) return activeFile.content;
-      return `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <style>body { font-family: system-ui, sans-serif; color: #fff; background: #000; padding: 1.5rem; }</style>
-          </head>
-          <body>
-            ${activeFile.content}
-          </body>
-        </html>
-      `;
-    }
-    return '';
+    if (!activeFile?.name.endsWith('.html')) return '';
+    if (activeFile.content.includes('</body>')) return activeFile.content;
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><style>body{font-family:system-ui,sans-serif;color:#fff;background:#000;padding:1.5rem}</style></head><body>${activeFile.content}</body></html>`;
   }, [activeFile?.content, activeFile?.name, refreshKey]);
 
-  if (!activeFile) {
-    return (
-      <div className="h-full bg-[#050505] border-l border-white/5 flex flex-col items-center justify-center text-gray-500 p-6 text-center shadow-inner">
-        <Globe className="w-12 h-12 mb-4 opacity-20 text-indigo-400" />
-        <p className="font-medium text-sm">Vista Previa Inactiva</p>
-      </div>
-    );
-  }
+  const navigateTo = (url: string) => {
+    let normalized = url.trim();
+    if (!normalized) return;
+    if (!/^https?:\/\//i.test(normalized)) {
+      normalized = 'https://' + normalized;
+    }
+    setCurrentUrl(normalized);
+    setUrlInput(normalized);
+    setHistory(prev => {
+      const next = prev.slice(0, historyIndex + 1);
+      next.push(normalized);
+      setHistoryIndex(next.length - 1);
+      return next;
+    });
+    setRefreshKey(k => k + 1);
+  };
+
+  const goBack = () => {
+    if (historyIndex > 0) {
+      const idx = historyIndex - 1;
+      setHistoryIndex(idx);
+      setCurrentUrl(history[idx]);
+      setUrlInput(history[idx]);
+      setRefreshKey(k => k + 1);
+    }
+  };
+
+  const goForward = () => {
+    if (historyIndex < history.length - 1) {
+      const idx = historyIndex + 1;
+      setHistoryIndex(idx);
+      setCurrentUrl(history[idx]);
+      setUrlInput(history[idx]);
+      setRefreshKey(k => k + 1);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') navigateTo(urlInput);
+    if (e.key === 'Escape') setUrlInput(currentUrl);
+  };
+
+  const isHttps = currentUrl.startsWith('https://');
+  const showIframe = currentUrl || (activeFile && isWebFile);
 
   return (
     <div className="h-full bg-[#0A0A0A] flex flex-col border-l border-white/5 relative overflow-hidden">
-      {/* Header toolbar */}
-      <div className="h-12 bg-[#050505]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 z-10 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-          <span className="text-[13px] font-semibold text-gray-300 tracking-wide font-mono flex items-center gap-2">
-            <Globe className="w-4 h-4 text-emerald-400" />
-            localhost:3000
-          </span>
-        </div>
-        <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-white hover:bg-white/10 rounded-md" onClick={() => setRefreshKey(k => k + 1)}>
+      {/* Browser toolbar */}
+      <div className="h-12 bg-[#050505]/90 backdrop-blur-md border-b border-white/5 flex items-center gap-2 px-3 z-10 shrink-0">
+        {/* Nav buttons */}
+        <div className="flex gap-0.5">
+          <Button
+            variant="ghost" size="icon"
+            className="h-7 w-7 text-gray-500 hover:text-white hover:bg-white/10 rounded-md disabled:opacity-30"
+            onClick={goBack}
+            disabled={historyIndex <= 0}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            variant="ghost" size="icon"
+            className="h-7 w-7 text-gray-500 hover:text-white hover:bg-white/10 rounded-md disabled:opacity-30"
+            onClick={goForward}
+            disabled={historyIndex >= history.length - 1}
+          >
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            variant="ghost" size="icon"
+            className="h-7 w-7 text-gray-500 hover:text-white hover:bg-white/10 rounded-md"
+            onClick={() => setRefreshKey(k => k + 1)}
+          >
             <RefreshCw className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-white hover:bg-white/10 rounded-md">
+        </div>
+
+        {/* URL bar */}
+        <div className="flex-1 flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 h-8 focus-within:border-indigo-500/50 focus-within:bg-white/8 transition-all">
+          {currentUrl ? (
+            isHttps
+              ? <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
+              : <Globe className="w-3 h-3 text-gray-500 shrink-0" />
+          ) : (
+            <Globe className="w-3 h-3 text-gray-500 shrink-0" />
+          )}
+          <input
+            type="text"
+            value={urlInput}
+            onChange={e => setUrlInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={e => e.target.select()}
+            placeholder="Escribe una URL o abre un archivo HTML..."
+            className="flex-1 bg-transparent text-sm text-gray-200 placeholder:text-gray-600 outline-none font-mono"
+          />
+          {urlInput && (
+            <button onClick={() => { setUrlInput(''); setCurrentUrl(''); }} className="text-gray-500 hover:text-white">
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+
+        {/* Open external */}
+        {currentUrl && (
+          <Button
+            variant="ghost" size="icon"
+            className="h-7 w-7 text-gray-500 hover:text-white hover:bg-white/10 rounded-md"
+            onClick={() => window.open(currentUrl, '_blank')}
+          >
             <ExternalLink className="w-3.5 h-3.5" />
           </Button>
-        </div>
+        )}
       </div>
-      
-      {/* Content Area */}
-      <div className="flex-1 bg-white relative">
-        {isWebFile ? (
-          <iframe 
-            key={refreshKey}
+
+      {/* Content */}
+      <div className="flex-1 relative bg-white overflow-hidden">
+        {currentUrl ? (
+          <iframe
+            key={`url-${refreshKey}`}
+            ref={iframeRef}
+            src={currentUrl}
+            className="w-full h-full border-none"
+            title="Browser Preview"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+          />
+        ) : activeFile && isWebFile ? (
+          <iframe
+            key={`file-${refreshKey}`}
             srcDoc={previewHtml}
-            className="w-full h-full border-none bg-white"
-            title="Preview"
+            className="w-full h-full border-none"
+            title="File Preview"
             sandbox="allow-scripts allow-same-origin"
           />
         ) : (
-          <div className="h-full bg-[#0A0A0A] text-gray-300 p-6 font-mono text-sm overflow-auto">
-            <div className="flex items-center gap-3 opacity-50 mb-6 bg-white/5 p-3 rounded-lg border border-white/10">
-              <TerminalSquare className="w-5 h-5" />
-              <span>Terminal / Salida</span>
-            </div>
-            <pre className="text-emerald-400/90 leading-relaxed">
-              <span className="text-indigo-400">~/project $</span> run {activeFile.name}
-              {'\n\n'}
-              <span className="text-gray-500 italic">La salida del código se mostrará aquí cuando se implemente la ejecución para {activeFile.language || 'este lenguaje'}.</span>
-            </pre>
+          <div className="h-full bg-[#0A0A0A] flex flex-col items-center justify-center text-gray-500 p-6 text-center">
+            <Globe className="w-12 h-12 mb-4 opacity-20 text-indigo-400" />
+            <p className="font-medium text-sm text-gray-400">Navegador integrado</p>
+            <p className="text-xs text-gray-600 mt-2 max-w-xs">
+              Escribe una URL arriba para navegar, o abre un archivo HTML para previsualizarlo.
+            </p>
           </div>
         )}
       </div>
