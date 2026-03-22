@@ -8,6 +8,13 @@
       "when": 1774185089025,
       "tag": "0000_perfect_rumiko_fujikawa",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774186669497,
+      "tag": "0001_rich_jackal",
+      "breakpoints": true
     }
   ]
 }

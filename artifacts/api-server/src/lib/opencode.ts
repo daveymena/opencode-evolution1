@@ -1,6 +1,6 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { db, messagesTable } from "@workspace/db";
+import { db, messagesTable, projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -33,6 +33,11 @@ export async function runOpenCodeQuery(
   userMessage: string,
   projectId: number
 ): Promise<string> {
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(eq(projectsTable.id, projectId));
+
   const history = await db
     .select()
     .from(messagesTable)
@@ -49,9 +54,14 @@ export async function runOpenCodeQuery(
     : userMessage;
 
   try {
+    const args = ["run", prompt];
+    if (project?.model) {
+      args.push("-m", project.model);
+    }
+
     const { stdout, stderr } = await execFileAsync(
       "/usr/local/bin/opencode",
-      ["run", prompt],
+      args,
       {
         timeout: 120000,
         maxBuffer: 1024 * 1024 * 10,

@@ -76,6 +76,12 @@ export default function ChatPage() {
               <div className="flex items-center gap-2 text-[11px] font-medium text-gray-400 bg-white/5 border border-white/5 px-3 py-1.5 rounded-full shadow-sm">
                 <Circle className={`w-2 h-2 fill-current ${status.available ? 'text-emerald-400' : 'text-red-400'} animate-pulse`} />
                 {status.available ? 'IA Conectada' : 'IA Desconectada'}
+                {project?.model && (
+                  <>
+                    <div className="w-px h-3 bg-white/10 mx-1" />
+                    <span className="text-indigo-400 uppercase tracking-tighter">{project.model}</span>
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { ModelSelector } from './ModelSelector';
 
 interface ProjectSidebarProps {
   activeProjectId?: number;
@@ -19,6 +20,7 @@ export function ProjectSidebar({ activeProjectId, onSelectProject }: ProjectSide
   
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [selectedModel, setSelectedModel] = useState('mi-mo');
 
   const createProjectMutation = useCreateProject({
     mutation: {
@@ -26,6 +28,7 @@ export function ProjectSidebar({ activeProjectId, onSelectProject }: ProjectSide
         queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
         setIsNewProjectModalOpen(false);
         setNewProjectName('');
+        setSelectedModel('mi-mo');
         onSelectProject(data.id);
       }
     }
@@ -44,7 +47,12 @@ export function ProjectSidebar({ activeProjectId, onSelectProject }: ProjectSide
 
   const handleCreate = () => {
     if (!newProjectName.trim()) return;
-    createProjectMutation.mutate({ data: { name: newProjectName } });
+    createProjectMutation.mutate({ 
+      data: { 
+        name: newProjectName,
+        model: selectedModel
+      } 
+    });
   };
 
   return (
@@ -134,6 +142,9 @@ export function ProjectSidebar({ activeProjectId, onSelectProject }: ProjectSide
               }}
               className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500/50 rounded-xl text-[15px]"
             />
+          </div>
+          <div className="py-2 mb-2">
+            <ModelSelector value={selectedModel} onValueChange={setSelectedModel} />
           </div>
           <DialogFooter className="mt-6 flex gap-3">
             <Button variant="ghost" className="hover:bg-white/5 text-gray-400 hover:text-white rounded-xl h-11" onClick={() => setIsNewProjectModalOpen(false)}>Cancelar</Button>

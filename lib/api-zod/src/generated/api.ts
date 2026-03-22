@@ -23,6 +23,7 @@ export const ListProjectsResponseItem = zod.object({
   name: zod.string(),
   description: zod.string().nullish(),
   language: zod.string().nullish(),
+  model: zod.string(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -35,6 +36,7 @@ export const CreateProjectBody = zod.object({
   name: zod.string(),
   description: zod.string().nullish(),
   language: zod.string().nullish(),
+  model: zod.string().nullish(),
 });
 
 /**
@@ -49,6 +51,7 @@ export const GetProjectResponse = zod.object({
   name: zod.string(),
   description: zod.string().nullish(),
   language: zod.string().nullish(),
+  model: zod.string(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });

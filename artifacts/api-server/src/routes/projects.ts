@@ -31,7 +31,10 @@ router.post("/projects", async (req, res): Promise<void> => {
 
   const [project] = await db
     .insert(projectsTable)
-    .values(parsed.data)
+    .values({
+      ...parsed.data,
+      model: parsed.data.model ?? "mi-mo"
+    })
     .returning();
 
   res.status(201).json(GetProjectResponse.parse(project));

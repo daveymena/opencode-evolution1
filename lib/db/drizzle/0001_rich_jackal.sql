@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "model" text DEFAULT 'mi-mo' NOT NULL;

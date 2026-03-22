@@ -20,6 +20,7 @@ export interface Project {
   description?: string | null;
   /** @nullable */
   language?: string | null;
+  model: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +31,7 @@ export interface CreateProjectBody {
   description?: string | null;
   /** @nullable */
   language?: string | null;
+  model?: string | null;
 }
 
 export interface UpdateProjectBody {
