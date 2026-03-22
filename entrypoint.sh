@@ -1,24 +1,13 @@
+#!/bin/sh
 set -e
-
-# ==========================================
-# 🌌 Claude Code (Free Mode) Configuration
-# ==========================================
-# Usar Google AI Studio como backend gratuito
-export GOOGLE_API_KEY=AIzaSyCaSIKe84TTvkAitBf8Wv3C8tyQPrW8YuU
-export ANTHROPIC_API_KEY=AIzaSyCaSIKe84TTvkAitBf8Wv3C8tyQPrW8YuU
-export ANTHROPIC_BASE_URL=https://generativelanguage.googleapis.com/v1alpha/
-export ANTHROPIC_MODEL=gemini-1.5-pro-latest
-
-# Alias para facilitar el acceso
-alias claude="claude-code"
-echo "[entrypoint] Claude Code (Free Mode) configurado con éxito."
-
 
 AUTH_DIR="$HOME/.local/share/opencode"
 AUTH_FILE="$AUTH_DIR/auth.json"
 CONFIG_FILE="$HOME/opencode.json"
+WORKSPACE="/root/workspace"
 
 mkdir -p "$AUTH_DIR"
+mkdir -p "$WORKSPACE"
 
 # ── 1. auth.json: solo si hay keys configuradas ──────────────────────────────
 HAS_KEY=0
@@ -49,61 +38,70 @@ else
   echo "[entrypoint] Sin API keys — opencode usará flujo nativo de autenticación"
 fi
 
-# ── 2. opencode.json: declarar providers con {env:VAR} para que aparezcan ────
-# Esto hace que el selector muestre todos los modelos aunque la key no esté
-# configurada aún — opencode la pedirá al intentar usarlos.
+# ── 2. opencode.json: declarar todos los providers ───────────────────────────
 cat > "$CONFIG_FILE" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
     "openai": {
-      "options": {
-        "apiKey": "{env:OPENAI_API_KEY}"
-      }
+      "options": { "apiKey": "{env:OPENAI_API_KEY}" }
     },
     "anthropic": {
-      "options": {
-        "apiKey": "{env:ANTHROPIC_API_KEY}"
-      }
+      "options": { "apiKey": "{env:ANTHROPIC_API_KEY}" }
     },
     "google": {
-      "options": {
-        "apiKey": "{env:GOOGLE_API_KEY}"
-      }
+      "options": { "apiKey": "{env:GOOGLE_API_KEY}" }
     },
     "xai": {
-      "options": {
-        "apiKey": "{env:XAI_API_KEY}"
-      }
+      "options": { "apiKey": "{env:XAI_API_KEY}" }
     },
     "deepseek": {
-      "options": {
-        "apiKey": "{env:DEEPSEEK_API_KEY}"
-      }
+      "options": { "apiKey": "{env:DEEPSEEK_API_KEY}" }
     },
     "mistral": {
-      "options": {
-        "apiKey": "{env:MISTRAL_API_KEY}"
-      }
+      "options": { "apiKey": "{env:MISTRAL_API_KEY}" }
     },
     "groq": {
-      "options": {
-        "apiKey": "{env:GROQ_API_KEY}"
-      }
+      "options": { "apiKey": "{env:GROQ_API_KEY}" }
     },
     "openrouter": {
-      "options": {
-        "apiKey": "{env:OPENROUTER_API_KEY}"
-      }
+      "options": { "apiKey": "{env:OPENROUTER_API_KEY}" }
     }
   }
 }
 EOF
-
 echo "[entrypoint] opencode.json generado con todos los providers"
 
-# Directorio persistente donde opencode trabaja y guarda archivos de código
-mkdir -p /root/workspace
-cd /root/workspace
+# ── 3. Git workspace ─────────────────────────────────────────────────────────
+# GIT_REPO_URL: URL del repo remoto (ej: https://token@github.com/user/repo.git)
+# GIT_USER_NAME / GIT_USER_EMAIL: identidad para commits
+cd "$WORKSPACE"
+
+git config --global user.name  "${GIT_USER_NAME:-OpenCode Bot}"
+git config --global user.email "${GIT_USER_EMAIL:-opencode@localhost}"
+git config --global --add safe.directory "$WORKSPACE"
+
+if [ -n "$GIT_REPO_URL" ]; then
+  if [ ! -d "$WORKSPACE/.git" ]; then
+    echo "[entrypoint] Clonando repositorio..."
+    git clone "$GIT_REPO_URL" . || {
+      echo "[entrypoint] Clone falló, inicializando repo vacío"
+      git init
+      git remote add origin "$GIT_REPO_URL"
+    }
+  else
+    echo "[entrypoint] Repo ya existe, haciendo pull..."
+    git pull origin "${GIT_BRANCH:-main}" --rebase || true
+  fi
+else
+  # Sin repo remoto: solo inicializar git local para que opencode pueda hacer commits
+  if [ ! -d "$WORKSPACE/.git" ]; then
+    echo "[entrypoint] Inicializando repo Git local (sin remote)"
+    git init
+    git commit --allow-empty -m "init: workspace opencode"
+  fi
+fi
+
+echo "[entrypoint] Workspace listo en $WORKSPACE"
 
 exec opencode web --hostname 0.0.0.0 --port 3000
