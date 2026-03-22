@@ -77,6 +77,9 @@ RUN apt-get update && apt-get install -y \
 
 RUN npm install -g pnpm@10 pm2 tsx ts-node yarn opencode-ai --force || true
 
+# Crear directorio de datos para OpenCode (evita cold starts lentos)
+RUN mkdir -p /root/.local/share/opencode
+
 WORKDIR /app
 
 COPY --from=base /app/artifacts/api-server/dist ./artifacts/api-server/dist

@@ -58,18 +58,31 @@ export async function runOpenCodeQuery(
     if (project?.model) {
       args.push("-m", project.model);
     }
+    
+    // Add optimization flags
+    args.push("--format", "json");
+    args.push("--log-level", "ERROR");
 
     const { stdout, stderr } = await execFileAsync(
       "/usr/local/bin/opencode",
       args,
       {
         timeout: 120000,
-        maxBuffer: 1024 * 1024 * 10,
+        maxBuffer: 1024 * 1024 * 50, // 50MB for large plan outputs
       }
     );
 
     if (stderr) {
       logger.warn({ stderr }, "OpenCode stderr output");
+    }
+
+    if (stdout.trim().startsWith("{")) {
+       try {
+         const parsed = JSON.parse(stdout);
+         return parsed.response || parsed.content || stdout.trim();
+       } catch (e) {
+         return stdout.trim();
+       }
     }
 
     return stdout.trim() || "OpenCode completed without output.";
