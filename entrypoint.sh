@@ -90,6 +90,38 @@ echo "[entrypoint] Workspace listo: $WORKSPACE"
   done
 ) &
 
-# ── 5. Lanzar opencode ────────────────────────────────────────────────────────
+# ── 5. OpenClaw gateway ───────────────────────────────────────────────────────
+# Variables necesarias en EasyPanel:
+#   OPENCLAW_GATEWAY_TOKEN  → token de seguridad del gateway
+#   TELEGRAM_BOT_TOKEN      → token del bot de Telegram (opcional)
+#   OPENCLAW_MODEL          → modelo a usar (default: opencode/claude-opus-4-6)
+if [ -n "$OPENCLAW_GATEWAY_TOKEN" ]; then
+  mkdir -p /root/.openclaw
+
+  cat > /root/.openclaw/openclaw.json << OCEOF
+{
+  "agent": {
+    "model": "${OPENCLAW_MODEL:-opencode/claude-opus-4-6}"
+  },
+  "gateway": {
+    "port": 18789,
+    "bind": "lan",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    }
+  }
+  $([ -n "$TELEGRAM_BOT_TOKEN" ] && echo ",\"channels\":{\"telegram\":{\"botToken\":\"${TELEGRAM_BOT_TOKEN}\"}}")
+}
+OCEOF
+
+  echo "[entrypoint] Iniciando OpenClaw gateway en :18789..."
+  oclaw gateway --allow-unconfigured --bind lan > /tmp/openclaw.log 2>&1 &
+  echo "[entrypoint] OpenClaw PID: $!"
+else
+  echo "[entrypoint] OPENCLAW_GATEWAY_TOKEN no configurado — OpenClaw desactivado"
+fi
+
+# ── 6. Lanzar opencode ────────────────────────────────────────────────────────
 echo "[entrypoint] Iniciando opencode web en :3000"
 exec opencode web --hostname 0.0.0.0 --port 3000

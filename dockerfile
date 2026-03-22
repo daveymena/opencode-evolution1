@@ -6,8 +6,10 @@ RUN apt-get update && apt-get install -y \
     git curl wget chromium libfuse2 \
     && rm -rf /var/lib/apt/lists/*
 
-# ── OpenCode ──────────────────────────────────────────────────────────────────
-RUN npm install -g opencode-ai @anthropic-ai/claude-code --force
+# ── OpenCode + OpenClaw ───────────────────────────────────────────────────────
+RUN npm install -g opencode-ai @anthropic-ai/claude-code openclaw --force
+# Instalar el skill opencode-controller para que OpenClaw controle OpenCode
+RUN npx clawhub install opencode-controller --non-interactive 2>/dev/null || true
 
 # ── Entorno ───────────────────────────────────────────────────────────────────
 ENV HOME=/root
@@ -27,6 +29,8 @@ RUN chmod +x /entrypoint.sh
 EXPOSE 3000
 # Puerto dev server de proyectos generados por opencode
 EXPOSE 5173
+# Puerto gateway OpenClaw
+EXPOSE 18789
 
 VOLUME ["/root/.local/share/opencode", "/root/workspace"]
 
