@@ -13,9 +13,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalación NATIVA de OpenCode y Claude Code
-# v0.3.133: última versión donde el selector muestra todos los modelos
-# y pide la API key al seleccionar uno de pago (comportamiento deseado)
-RUN npm install -g opencode-ai@0.3.133 @anthropic-ai/claude-code --force
+# v0.4.45: serie 0.4.x — muestra todos los modelos y pide API key al seleccionar
+RUN npm install -g opencode-ai@0.4.45 @anthropic-ai/claude-code --force
 
 # Directorio de trabajo y persistencia
 WORKDIR /app
