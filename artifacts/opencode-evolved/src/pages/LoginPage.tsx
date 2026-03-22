@@ -1,10 +1,12 @@
 import React, { useState } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const [, navigate] = useLocation();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [form, setForm] = useState({ email: "", password: "", name: "" });
   const [error, setError] = useState("");
@@ -32,6 +34,7 @@ export default function LoginPage() {
         return;
       }
       login(data.token, data.user);
+      navigate("/app");
     } catch {
       setError("No se pudo conectar al servidor");
     } finally {
@@ -44,6 +47,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
+          <button onClick={() => navigate("/")} className="text-gray-600 hover:text-gray-400 text-xs mb-4 flex items-center gap-1 mx-auto transition-colors">
+            ← Volver al inicio
+          </button>
           <div className="text-2xl font-bold text-white mb-1">OpenCode</div>
           <div className="text-sm text-gray-500">Tu entorno de desarrollo con IA</div>
         </div>
