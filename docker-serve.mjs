@@ -31,7 +31,7 @@ apiProcess.on("exit", (code) => {
 
 // 2. Start the Frontend Server & Proxy
 const app = express();
-const frontendDist = join(__dirname, "artifacts/opencode-evolved/dist");
+const frontendDist = join(__dirname, "artifacts/opencode-evolved/dist/public");
 
 app.use(express.static(frontendDist));
 
