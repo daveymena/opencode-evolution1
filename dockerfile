@@ -18,10 +18,13 @@ RUN npm install -g opencode-ai @anthropic-ai/claude-code --force
 # Directorio de trabajo y persistencia
 WORKDIR /app
 ENV HOME=/root
-ENV OPENCODE_SERVER_PASSWORD=OpenCode_Evo_2026
 # Evitar que opencode intente abrir un browser en entorno headless
 ENV BROWSER=echo
 ENV DISPLAY=
+# Sin password para evitar el bucle de Basic Auth en EasyPanel
+# La seguridad se maneja a nivel de EasyPanel (dominio/acceso)
+# Si necesitas password, configúralo como variable de entorno en EasyPanel:
+# OPENCODE_SERVER_PASSWORD=tu_password
 
 # Puerto estándar para EasyPanel
 EXPOSE 3000
