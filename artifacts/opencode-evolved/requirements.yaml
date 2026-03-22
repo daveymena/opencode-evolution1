@@ -1,0 +1,17 @@
+packages:
+  "@monaco-editor/react": "Core code editing experience"
+  "react-resizable-panels": "Standard IDE drag-to-resize panels"
+  "framer-motion": "Smooth UI transitions and animations"
+  "date-fns": "For formatting timestamps in project lists and chat"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility to efficiently merge Tailwind CSS classes"
+  "@radix-ui/react-dialog": "Accessible dialogs for new project/file modals"
+  "@radix-ui/react-slot": "For reusable component composition"
+  "@radix-ui/react-tooltip": "For tooltips on toolbar icons"
+
+images: []
+
+notes:
+  - Assumes standard React 19 + Tailwind v4 environment.
+  - Using @monaco-editor/react for the main IDE code area.
+  - WebSocket at /api/ws for real-time AI message streaming.

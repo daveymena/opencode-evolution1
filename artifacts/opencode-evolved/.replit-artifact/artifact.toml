@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "OpenCode Evolved"
+version = "1.0.0"
+id = "artifacts/opencode-evolved"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24372
+
+[services.development]
+run = "pnpm --filter @workspace/opencode-evolved run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/opencode-evolved", "run", "build" ]
+publicDir = "artifacts/opencode-evolved/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24372"
+BASE_PATH = "/"
