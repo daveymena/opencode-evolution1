@@ -6,67 +6,38 @@ AUTH_FILE="$AUTH_DIR/auth.json"
 
 mkdir -p "$AUTH_DIR"
 
-# Construir auth.json desde variables de entorno
-# EasyPanel: configura OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, etc.
+# Solo inyectar auth.json si hay al menos una API key configurada.
+# Si no hay ninguna, NO crear el archivo para que opencode use su flujo
+# nativo de pedir la key al seleccionar un modelo de pago.
 
-build_auth() {
-  echo "{"
+HAS_KEY=0
+AUTH_JSON="{"
+SEP=""
 
-  FIRST=1
-
-  if [ -n "$OPENAI_API_KEY" ]; then
-    [ $FIRST -eq 0 ] && echo ","
-    printf '  "openai": { "api_key": "%s" }' "$OPENAI_API_KEY"
-    FIRST=0
-  fi
-
-  if [ -n "$ANTHROPIC_API_KEY" ]; then
-    [ $FIRST -eq 0 ] && echo ","
-    printf '  "anthropic": { "api_key": "%s" }' "$ANTHROPIC_API_KEY"
-    FIRST=0
-  fi
-
-  if [ -n "$GOOGLE_API_KEY" ]; then
-    [ $FIRST -eq 0 ] && echo ","
-    printf '  "google": { "api_key": "%s" }' "$GOOGLE_API_KEY"
-    FIRST=0
-  fi
-
-  if [ -n "$XAI_API_KEY" ]; then
-    [ $FIRST -eq 0 ] && echo ","
-    printf '  "xai": { "api_key": "%s" }' "$XAI_API_KEY"
-    FIRST=0
-  fi
-
-  if [ -n "$DEEPSEEK_API_KEY" ]; then
-    [ $FIRST -eq 0 ] && echo ","
-    printf '  "deepseek": { "api_key": "%s" }' "$DEEPSEEK_API_KEY"
-    FIRST=0
-  fi
-
-  if [ -n "$MISTRAL_API_KEY" ]; then
-    [ $FIRST -eq 0 ] && echo ","
-    printf '  "mistral": { "api_key": "%s" }' "$MISTRAL_API_KEY"
-    FIRST=0
-  fi
-
-  if [ -n "$GROQ_API_KEY" ]; then
-    [ $FIRST -eq 0 ] && echo ","
-    printf '  "groq": { "api_key": "%s" }' "$GROQ_API_KEY"
-    FIRST=0
-  fi
-
-  if [ -n "$OPENROUTER_API_KEY" ]; then
-    [ $FIRST -eq 0 ] && echo ","
-    printf '  "openrouter": { "api_key": "%s" }' "$OPENROUTER_API_KEY"
-    FIRST=0
-  fi
-
-  echo ""
-  echo "}"
+add_key() {
+  PROVIDER="$1"
+  KEY="$2"
+  AUTH_JSON="${AUTH_JSON}${SEP}\"${PROVIDER}\":{\"api_key\":\"${KEY}\"}"
+  SEP=","
+  HAS_KEY=1
 }
 
-build_auth > "$AUTH_FILE"
-echo "[entrypoint] auth.json generado en $AUTH_FILE"
+[ -n "$OPENAI_API_KEY" ]     && add_key "openai"     "$OPENAI_API_KEY"
+[ -n "$ANTHROPIC_API_KEY" ]  && add_key "anthropic"  "$ANTHROPIC_API_KEY"
+[ -n "$GOOGLE_API_KEY" ]     && add_key "google"     "$GOOGLE_API_KEY"
+[ -n "$XAI_API_KEY" ]        && add_key "xai"        "$XAI_API_KEY"
+[ -n "$DEEPSEEK_API_KEY" ]   && add_key "deepseek"   "$DEEPSEEK_API_KEY"
+[ -n "$MISTRAL_API_KEY" ]    && add_key "mistral"    "$MISTRAL_API_KEY"
+[ -n "$GROQ_API_KEY" ]       && add_key "groq"       "$GROQ_API_KEY"
+[ -n "$OPENROUTER_API_KEY" ] && add_key "openrouter" "$OPENROUTER_API_KEY"
+
+AUTH_JSON="${AUTH_JSON}}"
+
+if [ $HAS_KEY -eq 1 ]; then
+  echo "$AUTH_JSON" > "$AUTH_FILE"
+  echo "[entrypoint] auth.json generado con providers configurados"
+else
+  echo "[entrypoint] Sin API keys en env vars — opencode usará su flujo nativo de autenticación"
+fi
 
 exec opencode web --hostname 0.0.0.0 --port 3000
