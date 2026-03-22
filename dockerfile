@@ -19,9 +19,12 @@ RUN npm install -g opencode-ai @anthropic-ai/claude-code --force
 WORKDIR /app
 ENV HOME=/root
 ENV OPENCODE_SERVER_PASSWORD=OpenCode_Evo_2026
+# Evitar que opencode intente abrir un browser en entorno headless
+ENV BROWSER=echo
+ENV DISPLAY=
 
 # Puerto estándar para EasyPanel
 EXPOSE 3000
 
-# Iniciar la Interfaz Web Original de OpenCode
-CMD ["opencode", "web", "--hostname", "0.0.0.0", "--port", "3000", "--password", "OpenCode_Evo_2026"]
+# Iniciar OpenCode en modo servidor web (headless, sin abrir browser)
+CMD ["opencode", "web", "--hostname", "0.0.0.0", "--port", "3000"]
