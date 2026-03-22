@@ -35,7 +35,10 @@ const frontendDist = join(__dirname, "artifacts/opencode-evolved/dist/public");
 
 app.use(express.static(frontendDist));
 
-app.use("/api", createProxyMiddleware({
+app.use("/api", (req, res, next) => {
+  req.url = req.originalUrl;
+  next();
+}, createProxyMiddleware({
   target: `http://localhost:${API_PORT}`,
   changeOrigin: true,
 }));
