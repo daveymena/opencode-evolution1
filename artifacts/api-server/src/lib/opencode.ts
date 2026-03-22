@@ -51,7 +51,7 @@ export async function runOpenCodeQuery(
   try {
     const { stdout, stderr } = await execFileAsync(
       "opencode",
-      ["run", "--no-interactive", "--message", prompt],
+      ["run", prompt],
       {
         timeout: 60000,
         maxBuffer: 1024 * 1024 * 10,
