@@ -50,13 +50,10 @@ router.post("/projects/:projectId/messages", async (req, res): Promise<void> => 
     })
     .returning();
 
-  let aiContent: string;
-  try {
-    aiContent = await runOpenCodeQuery(parsed.data.content, params.data.projectId);
-  } catch (err) {
-    req.log.error({ err }, "OpenCode query failed");
-    aiContent = "OpenCode is not available at the moment. Please ensure it is installed and configured.";
-  }
+  const aiContent = await runOpenCodeQuery(parsed.data.content, params.data.projectId).catch((err) => {
+    req.log.error({ err }, "Error running OpenCode query");
+    return `Error: ${err.message || "OpenCode is not available"}`;
+  });
 
   const [aiMessage] = await db
     .insert(messagesTable)

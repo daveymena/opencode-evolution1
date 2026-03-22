@@ -19,6 +19,9 @@ export const models = [
   { id: 'mi-mo', name: 'MiMo (Zen)', icon: Zap, category: 'Zen (Gratis)', description: 'Rápido y eficiente' },
   { id: 'nemotron', name: 'Nemotron (Zen)', icon: Brain, category: 'Zen (Gratis)', description: 'Lógica y código' },
   { id: 'minimax', name: 'MiniMax (Zen)', icon: Globe, category: 'Zen (Gratis)', description: 'Creatividad' },
+  { id: 'llama-3.1-8b', name: 'Llama 3.1 8B (Zen)', icon: Brain, category: 'Zen (Gratis)', description: 'Versátil y libre' },
+  { id: 'qwen-2.5-72b', name: 'Qwen 2.5 (Zen)', icon: Zap, category: 'Zen (Gratis)', description: 'Potente y preciso' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Zen)', icon: Sparkles, category: 'Zen (Gratis)', description: 'Multimodal rápido' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', icon: Sparkles, category: 'Premium', description: 'Máximo poder' },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', icon: Sparkles, category: 'Premium', description: 'Razonamiento humano' },
 ];
