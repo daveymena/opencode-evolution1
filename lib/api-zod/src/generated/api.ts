@@ -67,6 +67,7 @@ export const UpdateProjectBody = zod.object({
   name: zod.string().nullish(),
   description: zod.string().nullish(),
   language: zod.string().nullish(),
+  model: zod.string().nullish(),
 });
 
 export const UpdateProjectResponse = zod.object({
