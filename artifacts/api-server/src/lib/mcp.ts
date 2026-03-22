@@ -1,29 +1,67 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-// Scaffold for connecting to external MCP servers like Google Calendar or Drive.
+interface McpServiceConfig {
+  name: string;
+  command: string;
+  args: string[];
+}
+
 export class McpIntegration {
-  private client: Client;
+  private clients: Map<string, Client> = new Map();
+
+  // Lista de servicios MCP externos que mencionaste (Google, MercadoPago, PayPal)
+  private services: McpServiceConfig[] = [
+    {
+      name: "google-workspace",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-google-workspace"] // Calendar, Gmail, Drive
+    },
+    {
+      name: "mercadopago-tools",
+      command: "npx",
+      args: ["-y", "@opencode-evo/mcp-mercadopago"] // Herramientas de cobro
+    },
+    {
+      name: "paypal-tools",
+      command: "npx",
+      args: ["-y", "@opencode-evo/mcp-paypal"] // Integración PayPal
+    }
+  ];
 
   constructor() {
-    this.client = new Client(
-      { name: "opencode-evolved", version: "1.0.0" },
-      { capabilities: { tools: {}, prompts: {} } }
-    );
+    console.log("MCP Manager Initialized: Preparando conexiones con ecosistema Google y pasarelas de pago.");
   }
 
-  async connectToGoogleServices() {
-    // In a real scenario, this connect to an MCP server providing Google Drive/Calendar tools.
-    console.log("MCP: Initializing connection to external tools (Calendar, Drive)...");
+  async connectAllServices() {
+    console.log("Iniciando conexión MCP con herramientas externas...");
+
+    for (const service of this.services) {
+      try {
+        const client = new Client(
+          { name: `opencode-evolved-${service.name}`, version: "1.0.0" },
+          { capabilities: { tools: {}, prompts: {} } }
+        );
+
+        const transport = new StdioClientTransport({
+          command: service.command,
+          args: service.args
+        });
+
+        await client.connect(transport);
+        this.clients.set(service.name, client);
+        
+        console.log(`[MCP] Conectado exitosamente a: ${service.name}`);
+      } catch (error) {
+        console.error(`[MCP] Error al conectar con ${service.name}:`, error);
+      }
+    }
     
-    // Example transport connecting to a hypothetical local MCP server
-    // const transport = new StdioClientTransport({
-    //   command: "npx",
-    //   args: ["-y", "@modelcontextprotocol/server-everything"]
-    // });
-    
-    // await this.client.connect(transport);
-    console.log("MCP: Tools integrated successfully.");
+    console.log("Integración de herramientas MCP (Gmail, Calendar, Drive, MercadoPago, PayPal) completada.");
+  }
+
+  getClient(name: string): Client | undefined {
+    return this.clients.get(name);
   }
 }
 
