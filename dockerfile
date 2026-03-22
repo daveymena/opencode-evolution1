@@ -21,13 +21,13 @@ ENV HOME=/root
 # Evitar que opencode intente abrir un browser en entorno headless
 ENV BROWSER=echo
 ENV DISPLAY=
-# Sin password para evitar el bucle de Basic Auth en EasyPanel
-# La seguridad se maneja a nivel de EasyPanel (dominio/acceso)
-# Si necesitas password, configúralo como variable de entorno en EasyPanel:
-# OPENCODE_SERVER_PASSWORD=tu_password
+
+# Copiar entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Puerto estándar para EasyPanel
 EXPOSE 3000
 
-# Iniciar OpenCode en modo servidor web (headless, sin abrir browser)
-CMD ["opencode", "web", "--hostname", "0.0.0.0", "--port", "3000"]
+# El entrypoint construye auth.json desde env vars y luego lanza opencode
+ENTRYPOINT ["/entrypoint.sh"]
