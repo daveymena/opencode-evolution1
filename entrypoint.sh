@@ -62,30 +62,51 @@ echo "[entrypoint] Workspace listo: $WORKSPACE"
 # ── 4. Watcher: auto npm install + dev server ─────────────────────────────────
 (
   DEV_PID=""
+  FAIL_COUNT=0
+  MAX_FAILS=3
+
   while true; do
-    sleep 8
+    sleep 10
     cd "$WORKSPACE" 2>/dev/null || continue
 
+    # Solo actuar si hay package.json Y un directorio src/ o index.html
+    # (evitar activarse con package.json vacíos o del workspace raíz)
+    if [ ! -f "package.json" ] || { [ ! -d "src" ] && [ ! -f "index.html" ] && [ ! -f "index.js" ]; }; then
+      continue
+    fi
+
     # Auto-instalar dependencias
-    if [ -f "package.json" ] && [ ! -d "node_modules" ]; then
+    if [ ! -d "node_modules" ]; then
       echo "[watcher] npm install..."
-      npm install --silent 2>&1 | tail -3 || true
+      npm install --silent 2>&1 | tail -3 || continue
+    fi
+
+    # Si ya superó el límite de fallos, no reintentar
+    if [ $FAIL_COUNT -ge $MAX_FAILS ]; then
+      sleep 60
+      continue
     fi
 
     # Levantar dev server si no está corriendo
-    if [ -f "package.json" ] && [ -z "$DEV_PID" ]; then
+    if [ -z "$DEV_PID" ] || ! kill -0 "$DEV_PID" 2>/dev/null; then
       HAS_SCRIPT=$(node -e "try{const p=require('./package.json');console.log(p.scripts&&(p.scripts.dev||p.scripts.start)?'yes':'no')}catch(e){console.log('no')}" 2>/dev/null || echo "no")
       if [ "$HAS_SCRIPT" = "yes" ]; then
         echo "[watcher] Iniciando dev server en :5173..."
         PORT=5173 npm run dev -- --host 0.0.0.0 --port 5173 > /tmp/devserver.log 2>&1 &
         DEV_PID=$!
+        sleep 5
+        # Verificar que arrancó correctamente
+        if ! kill -0 "$DEV_PID" 2>/dev/null; then
+          FAIL_COUNT=$((FAIL_COUNT + 1))
+          echo "[watcher] Dev server falló ($FAIL_COUNT/$MAX_FAILS). Log:"
+          tail -5 /tmp/devserver.log
+          DEV_PID=""
+          [ $FAIL_COUNT -ge $MAX_FAILS ] && echo "[watcher] Demasiados fallos, pausando reintentos por 60s"
+        else
+          FAIL_COUNT=0
+          echo "[watcher] Dev server corriendo (PID $DEV_PID)"
+        fi
       fi
-    fi
-
-    # Reiniciar si murió
-    if [ -n "$DEV_PID" ] && ! kill -0 "$DEV_PID" 2>/dev/null; then
-      echo "[watcher] Dev server caído, reiniciando..."
-      DEV_PID=""
     fi
   done
 ) &
