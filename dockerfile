@@ -20,19 +20,22 @@ COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 COPY artifacts/opencode-evolved/ ./artifacts/opencode-evolved/
 
-# Instalar todas las dependencias
-RUN pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+# Instalar todas las dependencias (sin frozen para tolerar cambios en lockfile)
+RUN pnpm install --no-frozen-lockfile
 
 # Build de las libs primero
 RUN pnpm --filter "@workspace/api-zod" run build 2>/dev/null || true
 RUN pnpm --filter "@workspace/api-client-react" run build 2>/dev/null || true
 
 # Build del API server
-RUN pnpm --filter "@workspace/api-server" run build
+RUN echo "=== Building API server ===" && pnpm --filter "@workspace/api-server" run build && echo "=== API server build OK ==="
 
 # Build del frontend (Vite)
 ENV NODE_ENV=production
-RUN pnpm --filter "@workspace/opencode-evolved" run build
+RUN echo "=== Building frontend ===" && pnpm --filter "@workspace/opencode-evolved" run build && echo "=== Frontend build OK ==="
+
+# Verificar que los builds existen
+RUN ls -la /build/artifacts/api-server/dist/ && ls -la /build/artifacts/opencode-evolved/dist/public/
 
 ##############################################################################
 # STAGE 2 — Imagen final de producción
