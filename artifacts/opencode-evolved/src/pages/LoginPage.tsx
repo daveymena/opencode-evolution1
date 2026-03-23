@@ -23,20 +23,23 @@ export default function LoginPage() {
       : { email: form.email, password: form.password, name: form.name };
 
     try {
-      const res = await fetch(`${API_BASE}${endpoint}`, {
+      const url = `${API_BASE}${endpoint}`;
+      console.log("[auth] POST", url);
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Error desconocido");
+        setError(data.error || `Error ${res.status}`);
         return;
       }
       login(data.token, data.user);
       navigate("/app");
-    } catch {
-      setError("No se pudo conectar al servidor");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Error de conexión: ${msg}`);
     } finally {
       setLoading(false);
     }
