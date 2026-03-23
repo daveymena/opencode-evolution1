@@ -55,8 +55,8 @@ ENV DISPLAY=
 # API server
 WORKDIR /app/api
 COPY --from=builder /build/artifacts/api-server/dist ./dist
-COPY --from=builder /build/artifacts/api-server/package.json ./package.json
-RUN npm install --omit=dev bcryptjs jsonwebtoken pg
+# Instalar solo las dependencias runtime que el bundle necesita externalizadas
+RUN npm install --omit=dev bcryptjs jsonwebtoken pg express cors pino pino-http cookie-parser
 
 # Frontend estático
 COPY --from=builder /build/artifacts/opencode-evolved/dist/public /app/web/public
