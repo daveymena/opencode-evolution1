@@ -52,11 +52,11 @@ ENV HOME=/root
 ENV BROWSER=echo
 ENV DISPLAY=
 
-# API server
+# API server — solo el dist bundleado (esbuild incluye todas las deps)
 WORKDIR /app/api
 COPY --from=builder /build/artifacts/api-server/dist ./dist
-# Instalar solo las dependencias runtime que el bundle necesita externalizadas
-RUN npm install --omit=dev bcryptjs jsonwebtoken pg express cors pino pino-http cookie-parser
+# pg necesita el cliente nativo de postgres
+RUN npm init -y && npm install pg
 
 # Frontend estático
 COPY --from=builder /build/artifacts/opencode-evolved/dist/public /app/web/public

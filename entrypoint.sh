@@ -236,21 +236,22 @@ fi
 if [ -f "/app/api/dist/index.mjs" ]; then
   if [ -z "$DATABASE_URL" ]; then
     echo "[entrypoint] ERROR: DATABASE_URL no configurada — API server no iniciará"
-    echo "[entrypoint] Agrega DATABASE_URL en las variables de entorno de EasyPanel"
   else
     echo "[entrypoint] Iniciando API server en :3001"
     PORT=3001 NODE_ENV=production node /app/api/dist/index.mjs > /tmp/api.log 2>&1 &
     API_PID=$!
-    sleep 3
+    sleep 4
     if kill -0 "$API_PID" 2>/dev/null; then
       echo "[entrypoint] API server OK (PID $API_PID)"
     else
-      echo "[entrypoint] ERROR: API server falló al iniciar. Log:"
+      echo "[entrypoint] ===== ERROR: API server falló ====="
       cat /tmp/api.log
+      echo "[entrypoint] ====================================="
     fi
   fi
 else
-  echo "[entrypoint] ERROR: /app/api/dist/index.mjs no encontrado — build falló"
+  echo "[entrypoint] ERROR: /app/api/dist/index.mjs no encontrado"
+  ls /app/api/dist/ 2>/dev/null || echo "directorio dist vacio"
 fi
 
 # ── 7. Nginx (sirve frontend en :4000 y proxea /api a :3001) ─────────────────
