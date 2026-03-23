@@ -235,14 +235,22 @@ fi
 # ── 6. API Server (Express + Drizzle) ────────────────────────────────────────
 if [ -f "/app/api/dist/index.mjs" ]; then
   if [ -z "$DATABASE_URL" ]; then
-    echo "[entrypoint] ADVERTENCIA: DATABASE_URL no configurada — API server no iniciará"
+    echo "[entrypoint] ERROR: DATABASE_URL no configurada — API server no iniciará"
+    echo "[entrypoint] Agrega DATABASE_URL en las variables de entorno de EasyPanel"
   else
     echo "[entrypoint] Iniciando API server en :3001"
     PORT=3001 NODE_ENV=production node /app/api/dist/index.mjs > /tmp/api.log 2>&1 &
-    echo "[entrypoint] API server iniciado (PID $!)"
+    API_PID=$!
+    sleep 3
+    if kill -0 "$API_PID" 2>/dev/null; then
+      echo "[entrypoint] API server OK (PID $API_PID)"
+    else
+      echo "[entrypoint] ERROR: API server falló al iniciar. Log:"
+      cat /tmp/api.log
+    fi
   fi
 else
-  echo "[entrypoint] ADVERTENCIA: API server no encontrado en /app/api/dist/"
+  echo "[entrypoint] ERROR: /app/api/dist/index.mjs no encontrado — build falló"
 fi
 
 # ── 7. Nginx (sirve frontend en :4000 y proxea /api a :3001) ─────────────────
