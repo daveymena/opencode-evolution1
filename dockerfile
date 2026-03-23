@@ -30,7 +30,7 @@ RUN pnpm --filter "@workspace/api-client-react" run build 2>/dev/null || true
 # Build del API server
 RUN echo "=== Building API server ===" && pnpm --filter "@workspace/api-server" run build && echo "=== API server build OK ==="
 
-# Build del frontend (Vite)
+# Build del frontend (Vite) — v2
 ENV NODE_ENV=production
 RUN echo "=== Building frontend ===" && pnpm --filter "@workspace/opencode-evolved" run build && echo "=== Frontend build OK ==="
 
