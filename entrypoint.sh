@@ -232,6 +232,28 @@ else
   echo "[entrypoint] OPENCLAW_GATEWAY_TOKEN no configurado — OpenClaw desactivado"
 fi
 
-# ── 6. Lanzar opencode ────────────────────────────────────────────────────────
+# ── 6. API Server (Express + Drizzle) ────────────────────────────────────────
+if [ -f "/app/api/dist/index.mjs" ]; then
+  if [ -z "$DATABASE_URL" ]; then
+    echo "[entrypoint] ADVERTENCIA: DATABASE_URL no configurada — API server no iniciará"
+  else
+    echo "[entrypoint] Iniciando API server en :3001"
+    PORT=3001 NODE_ENV=production node /app/api/dist/index.mjs > /tmp/api.log 2>&1 &
+    echo "[entrypoint] API server iniciado (PID $!)"
+  fi
+else
+  echo "[entrypoint] ADVERTENCIA: API server no encontrado en /app/api/dist/"
+fi
+
+# ── 7. Nginx (sirve frontend en :4000 y proxea /api a :3001) ─────────────────
+if command -v nginx >/dev/null 2>&1 && [ -d "/app/web/public" ]; then
+  echo "[entrypoint] Iniciando nginx en :4000"
+  nginx -g "daemon off;" > /tmp/nginx.log 2>&1 &
+  echo "[entrypoint] nginx iniciado (PID $!)"
+else
+  echo "[entrypoint] ADVERTENCIA: nginx o frontend no disponible"
+fi
+
+# ── 8. Lanzar opencode ────────────────────────────────────────────────────────
 echo "[entrypoint] Iniciando opencode web en :3000"
 exec opencode web --hostname 0.0.0.0 --port 3000
