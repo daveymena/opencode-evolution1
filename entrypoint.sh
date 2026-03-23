@@ -256,11 +256,23 @@ fi
 
 # ── 7. Nginx (sirve frontend en :4000 y proxea /api a :3001) ─────────────────
 if command -v nginx >/dev/null 2>&1 && [ -d "/app/web/public" ]; then
+  echo "[entrypoint] Archivos en /app/web/public:"
+  ls /app/web/public/
   echo "[entrypoint] Iniciando nginx en :4000"
-  nginx -g "daemon off;" > /tmp/nginx.log 2>&1 &
-  echo "[entrypoint] nginx iniciado (PID $!)"
+  nginx -t 2>&1 && nginx -g "daemon off;" > /tmp/nginx.log 2>&1 &
+  NGINX_PID=$!
+  sleep 2
+  if kill -0 "$NGINX_PID" 2>/dev/null; then
+    echo "[entrypoint] nginx OK (PID $NGINX_PID)"
+  else
+    echo "[entrypoint] ===== ERROR: nginx falló ====="
+    cat /tmp/nginx.log
+    nginx -t 2>&1
+    echo "[entrypoint] ================================"
+  fi
 else
-  echo "[entrypoint] ADVERTENCIA: nginx o frontend no disponible"
+  [ ! -d "/app/web/public" ] && echo "[entrypoint] ERROR: /app/web/public no existe — build del frontend falló"
+  command -v nginx >/dev/null 2>&1 || echo "[entrypoint] ERROR: nginx no instalado"
 fi
 
 # ── 8. Lanzar opencode ────────────────────────────────────────────────────────
