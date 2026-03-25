@@ -133,6 +133,8 @@ echo "[entrypoint] Workspace listo: $WORKSPACE"
   done
 ) &
 
-# 5. Lanzar opencode
-echo "[entrypoint] Iniciando opencode web en :3000"
-exec opencode web --hostname 0.0.0.0 --port 3000
+# 5. Lanzar OpenCode Evolved (Custom IDE)
+echo "[entrypoint] Iniciando OpenCode Evolved (Fronend + Proxy) en :3000"
+# Usamos el servidor optimizado que sirve el build en /app
+cd /app
+exec node docker-serve.mjs
