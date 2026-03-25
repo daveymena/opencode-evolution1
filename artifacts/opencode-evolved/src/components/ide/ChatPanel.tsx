@@ -3,7 +3,7 @@ import { useIde } from '@/contexts/IdeContext';
 import { useListMessages, useSendMessage, getListMessagesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Bot, Send, Sparkles, User, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export function ChatPanel() {
@@ -13,7 +13,11 @@ export function ChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: messages = [], isLoading } = useListMessages(activeProjectId || 0, { 
-    query: { enabled: !!activeProjectId, refetchInterval: 3000 } // Poll for updates as simple fallback to WS
+    query: { 
+      queryKey: getListMessagesQueryKey(activeProjectId || 0),
+      enabled: !!activeProjectId, 
+      refetchInterval: 3000 
+    }
   });
 
   const sendMessageMutation = useSendMessage({

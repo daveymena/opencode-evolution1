@@ -1,15 +1,25 @@
 import React from 'react';
 import { useIde } from '@/contexts/IdeContext';
-import { Button } from '@/components/ui/Button';
-import { useGetProject, useGetOpenCodeStatus } from '@workspace/api-client-react';
+import { Button } from '@/components/ui/button';
+import { useGetProject, useGetOpenCodeStatus, getGetProjectQueryKey, getGetOpenCodeStatusQueryKey } from '@workspace/api-client-react';
 import { Terminal, LayoutPanelLeft, Play, Settings, Bot, Eye, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'wouter';
 
 export function Toolbar() {
   const { activeProjectId, activeFileId, isChatOpen, setIsChatOpen, isPreviewOpen, setIsPreviewOpen } = useIde();
-  const { data: project } = useGetProject(activeProjectId || 0, { query: { enabled: !!activeProjectId } });
-  const { data: opencodeStatus } = useGetOpenCodeStatus({ query: { refetchInterval: 10000 } });
+  const { data: project } = useGetProject(activeProjectId || 0, { 
+    query: { 
+      queryKey: getGetProjectQueryKey(activeProjectId || 0),
+      enabled: !!activeProjectId 
+    } 
+  });
+  const { data: opencodeStatus } = useGetOpenCodeStatus({ 
+    query: { 
+      queryKey: getGetOpenCodeStatusQueryKey(),
+      refetchInterval: 10000 
+    } 
+  });
 
   return (
     <div className="h-12 border-b border-ide-border bg-ide-panel flex items-center justify-between px-4 shrink-0 shadow-sm z-10 relative">

@@ -18,7 +18,7 @@ export function EditorArea() {
         base: 'vs-dark',
         inherit: true,
         rules: [
-          { background: '#0A0A0A' }
+          { token: '', background: '#0A0A0A' }
         ],
         colors: {
           'editor.background': '#0A0A0A',

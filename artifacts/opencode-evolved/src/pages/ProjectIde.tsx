@@ -7,7 +7,7 @@ import { EditorArea } from '@/components/ide/EditorArea';
 import { Preview } from '@/components/ide/Preview';
 import { ChatPanel } from '@/components/ide/ChatPanel';
 import { Toolbar } from '@/components/ide/Toolbar';
-import { useGetProject } from '@workspace/api-client-react';
+import { useGetProject, getGetProjectQueryKey } from '@workspace/api-client-react';
 
 export default function ProjectIde() {
   const { id } = useParams();
@@ -15,7 +15,10 @@ export default function ProjectIde() {
   const { setActiveProjectId, isChatOpen, isPreviewOpen } = useIde();
 
   const { data: project, isLoading, error } = useGetProject(projectId, { 
-    query: { enabled: !!projectId } 
+    query: { 
+      queryKey: getGetProjectQueryKey(projectId),
+      enabled: !!projectId 
+    } 
   });
 
   useEffect(() => {

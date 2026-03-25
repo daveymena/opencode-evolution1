@@ -4,14 +4,19 @@ import { useListFiles, useCreateFile, getListFilesQueryKey, useDeleteFile } from
 import { useQueryClient } from '@tanstack/react-query';
 import { File, FileText, FileCode2, FileJson, Plus, Folder, Search, Trash2, Edit2 } from 'lucide-react';
 import { getFileIcon, cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export function Sidebar() {
   const { activeProjectId, openFile, activeFileId } = useIde();
   const queryClient = useQueryClient();
-  const { data: files = [], isLoading } = useListFiles(activeProjectId || 0, { query: { enabled: !!activeProjectId } });
+  const { data: files = [], isLoading } = useListFiles(activeProjectId || 0, { 
+    query: { 
+      queryKey: getListFilesQueryKey(activeProjectId || 0),
+      enabled: !!activeProjectId 
+    } 
+  });
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newFileName, setNewFileName] = useState('');
@@ -136,8 +141,8 @@ export function Sidebar() {
               autoFocus
               placeholder="e.g. index.html, utils.ts, styles.css" 
               value={newFileName}
-              onChange={(e) => setNewFileName(e.target.value)}
-              onKeyDown={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFileName(e.target.value)}
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if(e.key === 'Enter') handleCreateFile();
               }}
             />

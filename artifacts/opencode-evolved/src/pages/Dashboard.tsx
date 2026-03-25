@@ -3,15 +3,19 @@ import { useListProjects, useCreateProject, getListProjectsQueryKey, useDeletePr
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Terminal, Plus, FolderGit2, Trash2, Clock, Code2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
-import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
-  const { data: projects = [], isLoading } = useListProjects();
+  const { data: projects = [], isLoading } = useListProjects({ 
+    query: { 
+      queryKey: getListProjectsQueryKey() 
+    } 
+  });
   
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({ name: '', description: '', language: '' });
@@ -107,7 +111,7 @@ export default function Dashboard() {
                     <Code2 className="w-5 h-5" />
                   </div>
                   <button 
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.preventDefault();
                       if(confirm(`Are you sure you want to delete ${project.name}?`)) {
                         deleteProjectMutation.mutate({ id: project.id });
@@ -157,7 +161,7 @@ export default function Dashboard() {
                 autoFocus
                 placeholder="e.g. awesome-app" 
                 value={newProject.name}
-                onChange={(e) => setNewProject({...newProject, name: e.target.value})}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProject({...newProject, name: e.target.value})}
                 className="bg-black/50 border-zinc-800"
               />
             </div>
@@ -166,7 +170,7 @@ export default function Dashboard() {
               <Input 
                 placeholder="e.g. React, Node.js, Python" 
                 value={newProject.language}
-                onChange={(e) => setNewProject({...newProject, language: e.target.value})}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProject({...newProject, language: e.target.value})}
                 className="bg-black/50 border-zinc-800"
               />
             </div>
@@ -175,7 +179,7 @@ export default function Dashboard() {
               <Textarea 
                 placeholder="What is this project about?" 
                 value={newProject.description}
-                onChange={(e) => setNewProject({...newProject, description: e.target.value})}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewProject({...newProject, description: e.target.value})}
                 className="bg-black/50 border-zinc-800 resize-none"
               />
             </div>
