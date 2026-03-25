@@ -1,4 +1,4 @@
-﻿FROM node:22-bookworm-slim AS base
+FROM node:22-bookworm-slim AS base
 
 # Sistema
 RUN apt-get update && apt-get install -y \
@@ -6,23 +6,21 @@ RUN apt-get update && apt-get install -y \
     git curl wget chromium libfuse2 \
     && rm -rf /var/lib/apt/lists/*
 
-# OpenCode + OpenClaw
-RUN npm install -g opencode-ai @anthropic-ai/claude-code openclaw --force
-RUN npx clawhub install opencode-controller --non-interactive 2>/dev/null || true
+# OpenCode
+RUN npm install -g opencode-ai --force
 
 ENV HOME=/root
 ENV BROWSER=echo
 ENV DISPLAY=
 
-RUN mkdir -p /root/.local/share/opencode /root/workspace
+RUN mkdir -p /root/.local/share/opencode /root/workspace /root/projects
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 3000
 EXPOSE 5173
-EXPOSE 18789
 
-VOLUME ["/root/.local/share/opencode", "/root/workspace"]
+VOLUME ["/root/.local/share/opencode", "/root/workspace", "/root/projects"]
 
 ENTRYPOINT ["/entrypoint.sh"]

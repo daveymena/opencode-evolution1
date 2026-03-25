@@ -13,8 +13,11 @@ services:
       - opencode_data:/root/.local/share/opencode
       # Archivos de código que opencode genera/edita
       - opencode_workspace:/root/workspace
+      # Carpeta de proyectos persistente
+      - opencode_projects:/root/projects
     restart: unless-stopped
 
 volumes:
   opencode_data:
   opencode_workspace:
+  opencode_projects:

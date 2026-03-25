@@ -12,7 +12,7 @@ export async function checkOpenCodeStatus(): Promise<{
   message: string;
 }> {
   try {
-    const { stdout } = await execFileAsync("/usr/local/bin/opencode", ["--version"], {
+    const { stdout } = await execFileAsync("opencode", ["--version"], {
       timeout: 10000,
     });
     return {
@@ -24,7 +24,7 @@ export async function checkOpenCodeStatus(): Promise<{
     return {
       available: false,
       version: null,
-      message: "OpenCode is not installed or not in PATH. Install it with: npm install -g opencode-ai",
+      message: "OpenCode is not installed or not in PATH.",
     };
   }
 }
@@ -64,7 +64,7 @@ export async function runOpenCodeQuery(
     args.push("--log-level", "ERROR");
 
     const { stdout, stderr } = await execFileAsync(
-      "/usr/local/bin/opencode",
+      "opencode",
       args,
       {
         timeout: 120000,

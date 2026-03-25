@@ -4,8 +4,9 @@ set -e
 AUTH_DIR="/root/.local/share/opencode"
 CONFIG_FILE="/root/opencode.json"
 WORKSPACE="/root/workspace"
+PROJECTS="/root/projects"
 
-mkdir -p "$AUTH_DIR" "$WORKSPACE"
+mkdir -p "$AUTH_DIR" "$WORKSPACE" "$PROJECTS"
 
 # 1. auth.json
 HAS_KEY=0; AUTH_JSON="{"; SEP=""
@@ -63,6 +64,7 @@ echo "[entrypoint] opencode.json OK"
 git config --global user.name  "${GIT_USER_NAME:-OpenCode Bot}"
 git config --global user.email "${GIT_USER_EMAIL:-opencode@localhost}"
 git config --global --add safe.directory "$WORKSPACE"
+git config --global --add safe.directory "$PROJECTS"
 git config --global init.defaultBranch main
 
 if [ -n "$GIT_TOKEN" ] && [ -n "$GIT_REPO_URL" ]; then
@@ -131,41 +133,6 @@ echo "[entrypoint] Workspace listo: $WORKSPACE"
   done
 ) &
 
-# 5. OpenClaw
-if [ -n "$OPENCLAW_GATEWAY_TOKEN" ]; then
-  mkdir -p /root/.openclaw
-  if [ -n "$OPENCODE_API_KEY" ]; then
-    OC_MODEL="${OPENCLAW_MODEL:-opencode/big-pickle}"
-    OC_ENV_BLOCK="\"OPENCODE_API_KEY\":\"${OPENCODE_API_KEY}\""
-  elif [ -n "$ANTHROPIC_API_KEY" ]; then
-    OC_MODEL="${OPENCLAW_MODEL:-anthropic/claude-sonnet-4-5}"
-    OC_ENV_BLOCK="\"ANTHROPIC_API_KEY\":\"${ANTHROPIC_API_KEY}\""
-  elif [ -n "$OPENAI_API_KEY" ]; then
-    OC_MODEL="${OPENCLAW_MODEL:-openai/gpt-4o}"
-    OC_ENV_BLOCK="\"OPENAI_API_KEY\":\"${OPENAI_API_KEY}\""
-  elif [ -n "$GOOGLE_API_KEY" ]; then
-    OC_MODEL="${OPENCLAW_MODEL:-google/gemini-2.5-flash}"
-    OC_ENV_BLOCK="\"GOOGLE_API_KEY\":\"${GOOGLE_API_KEY}\""
-  else
-    OC_MODEL="opencode/big-pickle"
-    OC_ENV_BLOCK=""
-  fi
-  TELEGRAM_SECTION=""
-  [ -n "$TELEGRAM_BOT_TOKEN" ] && TELEGRAM_SECTION=",\"channels\":{\"telegram\":{\"botToken\":\"${TELEGRAM_BOT_TOKEN}\"}}"
-  cat > /root/.openclaw/openclaw.json << OCEOF
-{
-  "agent": { "model": "${OC_MODEL}" },
-  "env": { ${OC_ENV_BLOCK} },
-  "gateway": { "port": 18789, "bind": "lan", "auth": { "mode": "token", "token": "${OPENCLAW_GATEWAY_TOKEN}" } }
-  ${TELEGRAM_SECTION}
-}
-OCEOF
-  oclaw gateway --allow-unconfigured --bind lan > /tmp/openclaw.log 2>&1 &
-  echo "[entrypoint] OpenClaw iniciado en :18789"
-else
-  echo "[entrypoint] OpenClaw desactivado"
-fi
-
-# 6. Lanzar opencode
+# 5. Lanzar opencode
 echo "[entrypoint] Iniciando opencode web en :3000"
 exec opencode web --hostname 0.0.0.0 --port 3000
