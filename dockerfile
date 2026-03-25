@@ -12,22 +12,14 @@ RUN npm install -g pnpm opencode-ai --force
 # Directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de configuración de pnpm
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY artifacts/api-server/package.json ./artifacts/api-server/
-COPY artifacts/opencode-evolved/package.json ./artifacts/opencode-evolved/
-COPY lib/api-client-react/package.json ./lib/api-client-react/
-COPY lib/api-spec/package.json ./lib/api-spec/
-COPY lib/api-zod/package.json ./lib/api-zod/
-COPY lib/db/package.json ./lib/db/
-
-# Instalar dependencias
-RUN pnpm install --frozen-lockfile
-
-# Copiar el resto del código
+# Copiamos todo el proyecto primero
+# En monorepos es más seguro copiar todo para que pnpm encuentre todas las referencias en el workspace
 COPY . .
 
-# Construir la aplicación
+# Instalar dependencias (quitamos frozen-lockfile para evitar errores de sincronización ligeros entre Windows/Linux)
+RUN pnpm install
+
+# Construir la aplicación (esto compilará React y el servidor API)
 RUN pnpm run build
 
 ENV HOME=/root
@@ -37,7 +29,12 @@ ENV DISPLAY=
 # Preparar carpetas persistentes
 RUN mkdir -p /root/.local/share/opencode /root/workspace /root/projects
 
-# Configurar entrypoint
+# Configuración de Git global
+RUN git config --global user.name "OpenCode Bot" && \
+    git config --global user.email "opencode@localhost" && \
+    git config --global init.defaultBranch main
+
+# Configurar entrypoint y permisos
 RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 3000
