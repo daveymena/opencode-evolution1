@@ -40,7 +40,7 @@ export class McpIntegration {
       try {
         const client = new Client(
           { name: `opencode-evolved-${service.name}`, version: "1.0.0" },
-          { capabilities: { tools: {}, prompts: {} } }
+          { capabilities: {} }
         );
 
         const transport = new StdioClientTransport({
