@@ -9,7 +9,12 @@
   },
   "private": true,
   "devDependencies": {
-    "typescript": "~5.9.2",
-    "prettier": "^3.8.1"
+    "@types/node": "^25.5.0",
+    "drizzle-kit": "^0.31.10",
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1"
   }
 }

@@ -4,12 +4,17 @@ import { z } from "zod/v4";
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
-  email: text("email").notNull().unique(),
+  email: text("email").notNull().unique(), // Nota: Normalización a minúsculas debe manejarse en lógica adicional.
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true });
+export const insertUserSchema = createInsertSchema(usersTable).omit({
+  id: true,
+  createdAt: true,
+});
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;

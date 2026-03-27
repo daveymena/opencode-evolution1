@@ -5,15 +5,26 @@ import { usersTable } from "./users";
 
 export const projectsTable = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // Restricción de unicidad para [userId, name] debe manejarse mediante validación lógica.
   description: text("description"),
   language: text("language"),
   model: text("model").notNull().default("mi-mo"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
-export const insertProjectSchema = createInsertSchema(projectsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProjectSchema = createInsertSchema(projectsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projectsTable.$inferSelect;
