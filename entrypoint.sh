@@ -133,8 +133,21 @@ echo "[entrypoint] Workspace listo: $WORKSPACE"
   done
 ) &
 
-# 5. Lanzar OpenCode Evolved (Custom IDE)
-echo "[entrypoint] Iniciando OpenCode Evolved (Fronend + Proxy) en :3000"
-# Usamos el servidor optimizado que sirve el build en /app
+# 5. Verificar y instalar dependencias si es necesario
+echo "[entrypoint] Verificando dependencias..."
+cd /app
+
+# Fallback: instalar express si no existe
+if ! node -e "require('express')" 2>/dev/null; then
+  echo "[entrypoint] Instalando dependencias faltantes..."
+  if command -v pnpm >/dev/null 2>&1; then
+    pnpm install --prod 2>&1 | tail -5
+  elif command -v npm >/dev/null 2>&1; then
+    npm install --omit=dev 2>&1 | tail -5
+  fi
+fi
+
+# 6. Lanzar OpenCode Evolved (Frontend + Proxy)
+echo "[entrypoint] Iniciando OpenCode Evolved (Frontend + Proxy) en :3000"
 cd /app
 exec node docker-serve.mjs
