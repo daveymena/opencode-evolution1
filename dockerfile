@@ -35,11 +35,17 @@ RUN npm install -g pnpm@10 opencode-ai --force
 
 WORKDIR /app
 
-# Copiar solo lo necesario del builder
+# Copiar dependencias necesarias para docker-serve.mjs
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copiar lo necesario del builder
 COPY --from=builder /app/artifacts/opencode-evolved/dist ./artifacts/opencode-evolved/dist
 COPY --from=builder /app/docker-serve.mjs ./docker-serve.mjs
 COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
 COPY --from=builder /app/nginx.conf ./nginx.conf
+COPY --from=builder /app/.env.example ./.env.example
 
 ENV HOME=/root
 ENV BROWSER=echo
