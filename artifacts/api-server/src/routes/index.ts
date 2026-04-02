@@ -6,6 +6,7 @@ import filesRouter from "./files";
 import messagesRouter from "./messages";
 import opencodeRouter from "./opencode";
 import userApiKeysRouter from "./userApiKeys";
+import { buildRouter } from "./build";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(filesRouter);
 router.use(messagesRouter);
 router.use(opencodeRouter);
 router.use(userApiKeysRouter);
+router.use("/projects", buildRouter);
 
 export default router;

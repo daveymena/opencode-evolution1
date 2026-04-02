@@ -1,4 +1,28 @@
-FROM node:22-bookworm-slim AS base
+FROM node:22-bookworm-slim AS builder
+
+# Sistema
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip golang-go \
+    git curl wget chromium libfuse2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar pnpm
+RUN npm install -g pnpm@10
+
+# Directorio de trabajo
+WORKDIR /app
+
+# Copiamos todo el proyecto primero
+COPY . .
+
+# Instalar dependencias
+RUN pnpm install
+
+# Construir solo el frontend
+RUN pnpm --filter @workspace/opencode-evolved run build
+
+# Production stage
+FROM node:22-bookworm-slim
 
 # Sistema
 RUN apt-get update && apt-get install -y \
@@ -7,20 +31,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar pnpm y opencode
-RUN npm install -g pnpm opencode-ai --force
+RUN npm install -g pnpm@10 opencode-ai --force
 
-# Directorio de trabajo
 WORKDIR /app
 
-# Copiamos todo el proyecto primero
-# En monorepos es más seguro copiar todo para que pnpm encuentre todas las referencias en el workspace
-COPY . .
-
-# Instalar dependencias (quitamos frozen-lockfile para evitar errores de sincronización ligeros entre Windows/Linux)
-RUN pnpm install
-
-# Construir la aplicación (esto compilará React y el servidor API)
-RUN pnpm run build
+# Copiar solo lo necesario del builder
+COPY --from=builder /app/artifacts/opencode-evolved/dist ./artifacts/opencode-evolved/dist
+COPY --from=builder /app/docker-serve.mjs ./docker-serve.mjs
+COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
+COPY --from=builder /app/nginx.conf ./nginx.conf
 
 ENV HOME=/root
 ENV BROWSER=echo
@@ -39,7 +58,6 @@ RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 3000
 EXPOSE 5173
-EXPOSE 3001
 
 VOLUME ["/root/.local/share/opencode", "/root/workspace", "/root/projects"]
 

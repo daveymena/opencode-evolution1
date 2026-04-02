@@ -1,13 +1,71 @@
 version: "3.9"
 
 services:
-  app:
-    build: .
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: opencode_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-opencode}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opencode}
+      POSTGRES_DB: ${POSTGRES_DB:-opencode_evolved}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opencode}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - opencode_network
+
+  # Backend API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: opencode_api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opencode}:${POSTGRES_PASSWORD:-opencode}@db:5432/${POSTGRES_DB:-opencode_evolved}
+      - LOG_LEVEL=info
+    ports:
+      - "3001:3001"
+    volumes:
+      - opencode_projects:/root/projects
+      - opencode_workspace:/root/workspace
+    restart: unless-stopped
+    networks:
+      - opencode_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend + Static Server + Reverse Proxy
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opencode_frontend
+    depends_on:
+      - api
+      - db
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - API_URL=http://api:3001
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opencode}:${POSTGRES_PASSWORD:-opencode}@db:5432/${POSTGRES_DB:-opencode_evolved}
     volumes:
       # Sesiones, historial, base de datos de opencode
       - opencode_data:/root/.local/share/opencode
@@ -16,8 +74,15 @@ services:
       # Carpeta de proyectos persistente
       - opencode_projects:/root/projects
     restart: unless-stopped
+    networks:
+      - opencode_network
+
+networks:
+  opencode_network:
+    driver: bridge
 
 volumes:
+  postgres_data:
   opencode_data:
   opencode_workspace:
   opencode_projects:

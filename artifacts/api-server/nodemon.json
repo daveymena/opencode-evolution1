@@ -1,0 +1,17 @@
+{
+  "watch": [
+    "src",
+    "../api-zod/src",
+    "../db/src"
+  ],
+  "ext": "ts,mts,js",
+  "ignore": [
+    "src/**/*.test.ts",
+    "dist/**/*"
+  ],
+  "delay": 500,
+  "exec": "pnpm run build && pnpm run start",
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

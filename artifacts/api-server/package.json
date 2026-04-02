@@ -4,9 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
+    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start:watch",
+    "dev:watch": "nodemon --watch src --watch ../api-zod/src --watch ../db/src --ext ts,mts --exec 'pnpm run build' --delay 500ms",
+    "dev:start": "node --enable-source-maps --watch dist/index.mjs",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
+    "start:watch": "node --enable-source-maps --watch ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -31,6 +34,7 @@
     "@types/node": "catalog:",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
+    "nodemon": "^3.1.4",
     "pino-pretty": "^13",
     "thread-stream": "3.1.0"
   }
