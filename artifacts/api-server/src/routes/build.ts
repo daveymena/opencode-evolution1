@@ -1,6 +1,6 @@
 import express from "express";
 import { db } from "@workspace/db";
-import { projects } from "@workspace/db";
+import { projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 export const buildRouter = express.Router();
@@ -11,8 +11,8 @@ buildRouter.get("/:projectId/compile", async (req, res) => {
     const { projectId } = req.params;
     const project = await db
       .select()
-      .from(projects)
-      .where(eq(projects.id, parseInt(projectId)))
+      .from(projectsTable)
+      .where(eq(projectsTable.id, parseInt(projectId)))
       .limit(1);
 
     if (!project.length) {
@@ -37,8 +37,8 @@ buildRouter.post("/:projectId/compile", async (req, res) => {
     const { projectId } = req.params;
     const project = await db
       .select()
-      .from(projects)
-      .where(eq(projects.id, parseInt(projectId)))
+      .from(projectsTable)
+      .where(eq(projectsTable.id, parseInt(projectId)))
       .limit(1);
 
     if (!project.length) {
@@ -66,8 +66,8 @@ buildRouter.post("/:projectId/export", async (req, res) => {
     const { projectId } = req.params;
     const project = await db
       .select()
-      .from(projects)
-      .where(eq(projects.id, parseInt(projectId)))
+      .from(projectsTable)
+      .where(eq(projectsTable.id, parseInt(projectId)))
       .limit(1);
 
     if (!project.length) {
