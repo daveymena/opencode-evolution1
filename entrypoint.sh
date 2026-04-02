@@ -137,14 +137,15 @@ echo "[entrypoint] Workspace listo: $WORKSPACE"
 echo "[entrypoint] Verificando dependencias..."
 cd /app
 
-# Fallback: instalar express si no existe
+# Instalar TODOS los paquetes necesarios (no solo devDependencies)
 if ! node -e "require('express')" 2>/dev/null; then
-  echo "[entrypoint] Instalando dependencias faltantes..."
-  if command -v pnpm >/dev/null 2>&1; then
-    pnpm install --prod 2>&1 | tail -5
-  elif command -v npm >/dev/null 2>&1; then
-    npm install --omit=dev 2>&1 | tail -5
-  fi
+  echo "[entrypoint] Instalando express y dependencias..."
+  npm install express http-proxy-middleware --save 2>&1 | tail -3
+fi
+
+if ! node -e "require('http-proxy-middleware')" 2>/dev/null; then
+  echo "[entrypoint] Instalando http-proxy-middleware..."
+  npm install http-proxy-middleware --save 2>&1 | tail -3
 fi
 
 # 6. Lanzar OpenCode Evolved (Frontend + Proxy)
