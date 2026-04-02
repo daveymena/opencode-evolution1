@@ -53,4 +53,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# But DO commit example files (safe, no secrets)
+!.env.example
+!artifacts/opencode-evolved/.env.example
+!artifacts/api-server/.env.example
+
 /lib/generated/prisma
