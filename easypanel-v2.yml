@@ -1,0 +1,108 @@
+# ============================================================
+# OpenCode v2 - Configuración MEJORADA para EasyPanel
+#
+# INSTRUCCIONES DE USO:
+# 1. Sube estos archivos al repositorio:
+#    - docker-serve.mjs
+#    - docker-entrypoint.sh
+#    - Dockerfile.easypanel (renombrar a Dockerfile)
+#    - easypanel-v2.yml (renombrar a easypanel.yml)
+#
+# 2. En EasyPanel, crea una nueva App:
+#    - Tipo: "App from GitHub"
+#    - Selecciona este repositorio
+#    - EasyPanel detectará automáticamente el Dockerfile
+#
+# 3. Configura las variables de entorno en la UI de EasyPanel
+#
+# ============================================================
+
+services:
+  opencode:
+    type: app
+
+    # Usar el Dockerfile personalizado
+    build:
+      type: dockerfile
+      file: Dockerfile
+
+    # Puerto expuesto
+    ports:
+      - port: 3000
+        protocol: http
+
+    # Dominio automático
+    domains:
+      - host: "${PRIMARY_DOMAIN}"
+        port: 3000
+        https: true
+
+    # Variables de entorno - CONFIGURA ESTAS EN EASYPANEL UI
+    env:
+      # ---- DATABASE (REQUERIDO) ----
+      # Usa Supabase Cloud o tu propia base de datos
+      DATABASE_URL: "${DATABASE_URL}"
+
+      # ---- SUPABASE (opcional pero recomendado) ----
+      SUPABASE_URL: "${SUPABASE_URL}"
+      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY}"
+
+      # ---- API KEYS - Modelos Gratuitos ----
+      # Estas son suficientes para empezar:
+      GROQ_API_KEY: "${GROQ_API_KEY}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
+      CEREBRAS_API_KEY: "${CEREBRAS_API_KEY}"
+      TOGETHER_AI_API_KEY: "${TOGETHER_AI_API_KEY}"
+
+      # ---- API KEYS - Modelos de Pago (opcional) ----
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      GOOGLE_GENERATIVE_AI_API_KEY: "${GOOGLE_GENERATIVE_AI_API_KEY}"
+      MISTRAL_API_KEY: "${MISTRAL_API_KEY}"
+      XAI_API_KEY: "${XAI_API_KEY}"
+
+      # ---- Ollama (modelos locales) ----
+      OLLAMA_HOST: "${OLLAMA_HOST}"
+
+      # ---- Configuración del Servidor ----
+      PORT: "3000"
+      NODE_ENV: "production"
+
+    # Volúmenes persistentes
+    mounts:
+      # Workspace para proyectos
+      - type: volume
+        name: opencode-workspace
+        mountPath: /workspace
+
+      # Datos de OpenCode
+      - type: volume
+        name: opencode-data
+        mountPath: /root/.local/share/opencode
+
+      # Configuración
+      - type: volume
+        name: opencode-config
+        mountPath: /root/.config/opencode
+
+    # Recursos - ajusta según tu servidor
+    resources:
+      memoryLimit: 2048      # 2GB mínimo
+      cpuLimit: 2            # 2 cores mínimo
+
+    # Política de reinicio
+    restart: unless-stopped
+
+  # ---- Ollama (descomenta para usar modelos locales) ----
+  # ollama:
+  #   type: app
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - port: 11434
+  #       protocol: http
+  #   mounts:
+  #     - type: volume
+  #       name: ollama-models
+  #       mountPath: /root/.ollama
+  #   env:
+  #     OLLAMA_HOST: "0.0.0.0"

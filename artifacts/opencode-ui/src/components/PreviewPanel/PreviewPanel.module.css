@@ -1,0 +1,145 @@
+/* ============================================================
+ * OpenCode Evolution - PreviewPanel Styles
+ * ============================================================ */
+
+.previewPanel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary, #1a1a1a);
+  border-left: 1px solid var(--border-color, #333);
+  position: relative;
+  overflow: hidden;
+}
+
+.previewPanel.right {
+  height: 100%;
+  border-left: 1px solid var(--border-color, #333);
+}
+
+.previewPanel.bottom {
+  width: 100%;
+  border-top: 1px solid var(--border-color, #333);
+  border-left: none;
+}
+
+/* Resize Handle */
+.resizeHandle {
+  position: absolute;
+  z-index: 10;
+  transition: background 0.2s ease;
+}
+
+.resizeHandle.right {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+}
+
+.resizeHandle.bottom {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  cursor: row-resize;
+}
+
+.resizeHandle:hover,
+.resizeHandle.dragging {
+  background: var(--accent-primary, #3b82f6);
+}
+
+/* Panel Header */
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-secondary, #252525);
+  border-bottom: 1px solid var(--border-color, #333);
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panelTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.modeToggle {
+  display: flex;
+  background: var(--bg-tertiary, #1a1a1a);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.modeButton {
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary, #888);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modeButton:hover {
+  color: var(--text-primary, #fff);
+}
+
+.modeButton.active {
+  background: var(--accent-primary, #3b82f6);
+  color: white;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.iconButton:hover {
+  background: var(--bg-hover, #333);
+  color: var(--text-primary, #fff);
+}
+
+/* Panel Content */
+.panelContent {
+  flex: 1;
+  overflow: hidden;
+  padding: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .previewPanel.right {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 100% !important;
+    z-index: 100;
+  }
+}

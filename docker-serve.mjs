@@ -1,64 +1,177 @@
-import express from "express";
-import { createRequire } from "module";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-import { createProxyMiddleware } from "http-proxy-middleware";
+#!/usr/bin/env node
+// ============================================================
+// OpenCode - Docker Serve Entrypoint
+// Punto de entrada alternativo para EasyPanel y Docker
+// ============================================================
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
+import { spawn } from 'child_process';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
 
-const PORT = process.env.PORT || 3000;
-const API_URL = process.env.API_URL || "http://localhost:3001";
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-// Create Express app
-const app = express();
-const frontendDist = join(__dirname, "artifacts/opencode-evolved/dist");
+// Configuración
+const CONFIG = {
+  // Intentar encontrar el servidor API en varias ubicaciones posibles
+  possiblePaths: [
+    './artifacts/api-server/dist/index.js',
+    './api-server/dist/index.js',
+    './artifacts/api-server/dist/server.js',
+    './api-server/dist/server.js',
+    './artifacts/api-server/index.js',
+    './api-server/index.js',
+  ],
+  // Comando pnpm como fallback
+  pnpmCommand: ['pnpm', '--filter', '@workspace/api-server', 'run', 'start'],
+  // Puerto por defecto
+  port: process.env.PORT || 3000
+};
 
-// Serve static frontend files
-app.use(express.static(frontendDist));
+console.log('╔═══════════════════════════════════════════════════════════╗');
+console.log('║  OpenCode Evolution - Docker Serve                         ║');
+console.log('╚═══════════════════════════════════════════════════════════╝');
+console.log('');
+console.log(`📁 Directorio de trabajo: ${process.cwd()}`);
+console.log(`🔌 Puerto configurado: ${CONFIG.port}`);
+console.log('');
 
-// Proxy API requests to backend service
-app.use("/api", createProxyMiddleware({
-  target: API_URL,
-  changeOrigin: true,
-  ws: true,
-  logger: console,
-  onProxyRes: (proxyRes, req, res) => {
-    proxyRes.headers["Access-Control-Allow-Origin"] = "*";
-    proxyRes.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS";
-    proxyRes.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization";
-  },
-}));
+// Función para encontrar el archivo del servidor
+function findServerPath() {
+  for (const path of CONFIG.possiblePaths) {
+    const fullPath = join(process.cwd(), path);
+    if (existsSync(fullPath)) {
+      console.log(`✅ Servidor encontrado en: ${path}`);
+      return fullPath;
+    }
+  }
+  return null;
+}
 
-// SPA fallback for all non-API routes
-app.get("*", (_req, res) => {
-  res.sendFile(join(frontendDist, "index.html"));
-});
+// Función para ejecutar con pnpm
+function runWithPnpm() {
+  console.log('🚀 Iniciando con PNPM...');
+  console.log(`   Comando: ${CONFIG.pnpmCommand.join(' ')}`);
+  console.log('');
 
-// Error handling middleware
-app.use((err, _req, res, _next) => {
-  console.error("Error:", err);
-  res.status(500).json({ 
-    error: "Internal Server Error",
-    message: process.env.NODE_ENV === "development" ? err.message : undefined
+  const [cmd, ...args] = CONFIG.pnpmCommand;
+  const proc = spawn(cmd, args, {
+    stdio: 'inherit',
+    shell: true,
+    env: {
+      ...process.env,
+      NODE_ENV: 'production',
+      PORT: CONFIG.port.toString()
+    }
   });
-});
 
-// Start server
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`✅ OpenCode Evolved Frontend + Proxy listening on port ${PORT}`);
-  console.log(`📡 API URL: ${API_URL}`);
-  console.log(`🌐 Frontend: http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/healthz`);
-});
+  proc.on('error', (err) => {
+    console.error('❌ Error al iniciar con PNPM:', err.message);
+    process.exit(1);
+  });
 
-// Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("🛑 SIGTERM received, shutting down gracefully...");
-  process.exit(0);
-});
+  proc.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(`❌ El proceso salió con código: ${code}`);
+    }
+    process.exit(code);
+  });
 
-process.on("SIGINT", () => {
-  console.log("🛑 SIGINT received, shutting down gracefully...");
-  process.exit(0);
+  // Manejar señales de terminación
+  process.on('SIGTERM', () => {
+    console.log('\n🛑 Recibida señal SIGTERM, cerrando gracefully...');
+    proc.kill('SIGTERM');
+  });
+
+  process.on('SIGINT', () => {
+    console.log('\n🛑 Recibida señal SIGINT, cerrando...');
+    proc.kill('SIGINT');
+  });
+}
+
+// Función para ejecutar directamente con Node
+function runWithNode(serverPath) {
+  console.log('🚀 Iniciando servidor directamente con Node...');
+  console.log(`   Archivo: ${serverPath}`);
+  console.log('');
+
+  const proc = spawn('node', [serverPath], {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      NODE_ENV: 'production',
+      PORT: CONFIG.port.toString()
+    }
+  });
+
+  proc.on('error', (err) => {
+    console.error('❌ Error al iniciar el servidor:', err.message);
+    // Intentar con pnpm como fallback
+    console.log('🔄 Intentando con PNPM como fallback...');
+    runWithPnpm();
+  });
+
+  proc.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(`❌ El proceso salió con código: ${code}`);
+    }
+    process.exit(code);
+  });
+
+  // Manejar señales de terminación
+  process.on('SIGTERM', () => {
+    console.log('\n🛑 Recibida señal SIGTERM, cerrando gracefully...');
+    proc.kill('SIGTERM');
+  });
+
+  process.on('SIGINT', () => {
+    console.log('\n🛑 Recibida señal SIGINT, cerrando...');
+    proc.kill('SIGINT');
+  });
+}
+
+// Verificar si pnpm está disponible
+function checkPnpm() {
+  return new Promise((resolve) => {
+    const check = spawn('pnpm', ['--version'], { shell: true });
+    check.on('error', () => resolve(false));
+    check.on('exit', (code) => resolve(code === 0));
+  });
+}
+
+// Función principal
+async function main() {
+  console.log('🔍 Verificando entorno...\n');
+
+  // Verificar que estamos en el directorio correcto
+  const packageJsonPath = join(process.cwd(), 'package.json');
+  if (!existsSync(packageJsonPath)) {
+    console.error('❌ No se encontró package.json en el directorio actual');
+    console.error('   Asegúrate de que el volumen esté montado correctamente');
+    process.exit(1);
+  }
+
+  // Buscar el servidor compilado
+  const serverPath = findServerPath();
+
+  if (serverPath) {
+    // Si encontramos el archivo compilado, ejecutarlo directamente
+    runWithNode(serverPath);
+  } else {
+    // Si no, usar pnpm
+    const hasPnpm = await checkPnpm();
+    if (hasPnpm) {
+      runWithPnpm();
+    } else {
+      console.error('❌ No se encontró pnpm ni el servidor compilado');
+      console.error('   Asegúrate de que las dependencias estén instaladas');
+      process.exit(1);
+    }
+  }
+}
+
+// Ejecutar
+main().catch(err => {
+  console.error('❌ Error fatal:', err);
+  process.exit(1);
 });

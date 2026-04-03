@@ -1,0 +1,301 @@
+/* ============================================================
+ * OpenCode Evolution - WebView Styles
+ * ============================================================ */
+
+.webviewContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary, #1a1a1a);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-secondary, #252525);
+  border-bottom: 1px solid var(--border-color, #333);
+  gap: 12px;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbarButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.toolbarButton:hover {
+  background: var(--bg-hover, #333);
+  color: var(--text-primary, #fff);
+}
+
+.toolbarButton.active {
+  background: var(--accent-primary, #3b82f6);
+  color: white;
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background: var(--error-color, #ef4444);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.urlBar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.urlInput {
+  width: 100%;
+  padding: 6px 12px;
+  background: var(--bg-primary, #1a1a1a);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 6px;
+  color: var(--text-primary, #fff);
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.urlInput:focus {
+  outline: none;
+  border-color: var(--accent-primary, #3b82f6);
+}
+
+.viewportSelect {
+  padding: 6px 10px;
+  background: var(--bg-primary, #1a1a1a);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 6px;
+  color: var(--text-primary, #fff);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Preview Area */
+.previewArea {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  background: var(--bg-tertiary, #0a0a0a);
+  background-image:
+    linear-gradient(45deg, #1a1a1a 25%, transparent 25%),
+    linear-gradient(-45deg, #1a1a1a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1a1a1a 75%),
+    linear-gradient(-45deg, transparent 75%, #1a1a1a 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.viewport {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+/* Loading Overlay */
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 10;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent-primary, #3b82f6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error Overlay */
+.errorOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(239, 68, 68, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 10;
+  padding: 24px;
+}
+
+.errorIcon {
+  font-size: 48px;
+}
+
+.errorMessage {
+  color: var(--error-color, #ef4444);
+  font-size: 14px;
+  text-align: center;
+  max-width: 400px;
+}
+
+/* Console Panel */
+.consolePanel {
+  height: 150px;
+  background: var(--bg-secondary, #252525);
+  border-top: 1px solid var(--border-color, #333);
+  display: flex;
+  flex-direction: column;
+}
+
+.consoleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-tertiary, #1a1a1a);
+  border-bottom: 1px solid var(--border-color, #333);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clearButton {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--border-color, #333);
+  border-radius: 4px;
+  color: var(--text-secondary, #888);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clearButton:hover {
+  background: var(--bg-hover, #333);
+  color: var(--text-primary, #fff);
+}
+
+.consoleContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.consoleLine {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.consoleLine:last-child {
+  border-bottom: none;
+}
+
+.timestamp {
+  color: var(--text-muted, #666);
+  flex-shrink: 0;
+}
+
+.message {
+  color: var(--text-primary, #fff);
+  word-break: break-all;
+}
+
+.consoleLine.error .message {
+  color: var(--error-color, #ef4444);
+}
+
+.consoleLine.warn .message {
+  color: var(--warning-color, #f59e0b);
+}
+
+.consoleLine.info .message {
+  color: var(--info-color, #3b82f6);
+}
+
+.emptyConsole {
+  color: var(--text-muted, #666);
+  text-align: center;
+  padding: 24px;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .urlBar {
+    order: 3;
+    width: 100%;
+    margin-top: 8px;
+  }
+}

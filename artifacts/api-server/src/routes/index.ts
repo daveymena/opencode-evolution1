@@ -1,22 +1,21 @@
-import { Router, type IRouter } from "express";
-import healthRouter from "./health";
-import authRouter from "./auth";
-import projectsRouter from "./projects";
-import filesRouter from "./files";
-import messagesRouter from "./messages";
-import opencodeRouter from "./opencode";
-import userApiKeysRouter from "./userApiKeys";
-import { buildRouter } from "./build";
+// ============================================================
+// OpenCode Evolution - API Routes
+// ============================================================
 
-const router: IRouter = Router();
+import { Router } from 'express';
+import sandboxRoutes from './sandbox';
 
-router.use(healthRouter);
-router.use(authRouter);
-router.use(projectsRouter);
-router.use(filesRouter);
-router.use(messagesRouter);
-router.use(opencodeRouter);
-router.use(userApiKeysRouter);
-router.use("/projects", buildRouter);
+const router = Router();
+
+// Health check
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Sandbox routes
+router.use('/sandbox', sandboxRoutes);
+
+// Preview routes (alias)
+router.use('/preview', sandboxRoutes);
 
 export default router;

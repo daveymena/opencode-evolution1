@@ -1,0 +1,85 @@
+# ============================================================
+# OpenCode - Dockerfile v2 (Optimizado para EasyPanel)
+# ============================================================
+
+FROM ubuntu:24.04
+
+# Evitar prompts interactivos
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# ---- Instalar dependencias base ---- #
+RUN apt-get update && apt-get install -y \
+    curl wget git unzip zip tar gzip \
+    build-essential ca-certificates gnupg \
+    libssl-dev libffi-dev zlib1g-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- Instalar Node.js 22 ---- #
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g npm@latest pnpm \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- Instalar Bun ---- #
+RUN curl -fsSL https://bun.sh/install | bash \
+    && cp /root/.bun/bin/bun /usr/local/bin/bun
+
+# ---- Python 3.12 + herramientas ---- #
+RUN apt-get update && apt-get install -y \
+    python3.12 python3.12-dev python3.12-venv python3-pip \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1 \
+    && pip3 install --no-cache-dir --break-system-packages \
+        uv pandas numpy requests python-dotenv \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- Go ---- #
+RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz -o /tmp/go.tar.gz \
+    && tar -C /usr/local -xzf /tmp/go.tar.gz && rm /tmp/go.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# ---- Rust ---- #
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+    sh -s -- -y --profile minimal
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# ---- Java + Maven ---- #
+RUN apt-get update && apt-get install -y openjdk-21-jdk maven \
+    && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+# ---- Configurar directorio de trabajo ---- #
+WORKDIR /app
+
+# ---- Copiar archivos de configuración primero (para caché) ---- #
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY artifacts/opencode-ui/package.json ./artifacts/opencode-ui/
+COPY lib/*/package.json ./lib/*/
+
+# ---- Instalar dependencias ---- #
+RUN pnpm install --no-frozen-lockfile
+
+# ---- Copiar el resto del código ---- #
+COPY . .
+
+# ---- Copiar scripts de entrada ---- #
+COPY docker-serve.mjs docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh /app/docker-serve.mjs
+
+# ---- Construir el proyecto ---- #
+RUN pnpm --filter @workspace/api-server run build
+
+# ---- Exponer puerto ---- #
+EXPOSE 3000
+
+# ---- Healthcheck ---- #
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# ---- Punto de entrada ---- #
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

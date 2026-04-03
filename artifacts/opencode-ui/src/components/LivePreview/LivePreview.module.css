@@ -1,0 +1,270 @@
+/* ============================================================
+ * OpenCode Evolution - LivePreview Styles
+ * ============================================================ */
+
+.livePreviewContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary, #1a1a1a);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg-secondary, #252525);
+  border-bottom: 1px solid var(--border-color, #333);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.statusText {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.controlButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.controlButton:hover {
+  background: var(--bg-hover, #333);
+  color: var(--text-primary, #fff);
+}
+
+.controlButton.active {
+  background: var(--accent-primary, #3b82f6);
+  color: white;
+}
+
+/* Preview Area */
+.previewArea {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+/* Compiling Overlay */
+.compilingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent-primary, #3b82f6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Errors Panel */
+.errorsPanel {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  background: rgba(239, 68, 68, 0.95);
+  border-radius: 8px;
+  padding: 12px;
+  z-index: 20;
+  backdrop-filter: blur(8px);
+}
+
+.errorsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.dismissButton {
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dismissButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.errorsList {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.errorItem {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.errorItem:last-child {
+  border-bottom: none;
+}
+
+/* Console Panel */
+.consolePanel {
+  height: 120px;
+  background: var(--bg-secondary, #252525);
+  border-top: 1px solid var(--border-color, #333);
+  display: flex;
+  flex-direction: column;
+}
+
+.consoleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-tertiary, #1a1a1a);
+  border-bottom: 1px solid var(--border-color, #333);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clearButton {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--border-color, #333);
+  border-radius: 4px;
+  color: var(--text-secondary, #888);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clearButton:hover {
+  background: var(--bg-hover, #333);
+  color: var(--text-primary, #fff);
+}
+
+.consoleContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.consoleLine {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.timestamp {
+  color: var(--text-muted, #666);
+  flex-shrink: 0;
+}
+
+.message {
+  color: var(--text-primary, #fff);
+  word-break: break-all;
+}
+
+.consoleLine.error .message {
+  color: var(--error-color, #ef4444);
+}
+
+.consoleLine.warn .message {
+  color: var(--warning-color, #f59e0b);
+}
+
+.consoleLine.info .message {
+  color: var(--info-color, #3b82f6);
+}
+
+.emptyConsole {
+  color: var(--text-muted, #666);
+  text-align: center;
+  padding: 16px;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .consolePanel {
+    height: 80px;
+  }
+}

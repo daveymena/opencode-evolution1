@@ -1,0 +1,102 @@
+# ============================================================
+# Docker Compose para EasyPanel - OpenCode Evolution
+# Alternativa si el Dockerfile no funciona correctamente
+# ============================================================
+
+version: '3.8'
+
+services:
+  opencode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opencode-evolution
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      # Puerto del servidor
+      - PORT=3000
+      - NODE_ENV=production
+
+      # Base de datos (REQUERIDO)
+      - DATABASE_URL=${DATABASE_URL}
+
+      # Supabase (opcional)
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+
+      # APIs - Modelos Gratuitos
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - CEREBRAS_API_KEY=${CEREBRAS_API_KEY}
+      - TOGETHER_AI_API_KEY=${TOGETHER_AI_API_KEY}
+
+      # APIs - Modelos de Pago (opcional)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - XAI_API_KEY=${XAI_API_KEY}
+
+      # Ollama (para modelos locales)
+      - OLLAMA_HOST=${OLLAMA_HOST}
+
+    volumes:
+      # Workspace para proyectos
+      - opencode-workspace:/workspace
+      # Datos persistentes
+      - opencode-data:/root/.local/share/opencode
+      # Configuración
+      - opencode-config:/root/.config/opencode
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Límites de recursos (ajustar según servidor)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+    # Red
+    networks:
+      - opencode-network
+
+  # Ollama (opcional - descomentar para usar)
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: opencode-ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-models:/root/.ollama
+  #   networks:
+  #     - opencode-network
+
+# Volúmenes persistentes
+volumes:
+  opencode-workspace:
+    driver: local
+  opencode-data:
+    driver: local
+  opencode-config:
+    driver: local
+  # ollama-models:
+  #   driver: local
+
+# Red compartida
+networks:
+  opencode-network:
+    driver: bridge
