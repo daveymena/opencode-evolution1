@@ -51,9 +51,13 @@ RUN cd /app && npm install --omit=dev --silent 2>/dev/null || pnpm install --pro
 ENV HOME=/root
 ENV BROWSER=echo
 ENV DISPLAY=
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+ENV NPM_CONFIG_LOGLEVEL=error
+ENV NPM_CONFIG_FUND=false
+ENV NPM_CONFIG_AUDIT=false
 
 # Preparar carpetas persistentes
-RUN mkdir -p /root/.local/share/opencode /root/workspace /root/projects
+RUN mkdir -p /root/.local/share/opencode /root/workspace /root/projects /root/.cache/projects
 
 # Configuración de Git global
 RUN git config --global user.name "OpenCode Bot" && \
@@ -67,6 +71,6 @@ EXPOSE 3000
 EXPOSE 5173
 EXPOSE 8080
 
-VOLUME ["/root/.local/share/opencode", "/root/workspace", "/root/projects"]
+VOLUME ["/root/.local/share/opencode", "/root/workspace", "/root/projects", "/root/.cache/projects"]
 
 ENTRYPOINT ["/app/entrypoint.sh"]

@@ -4,8 +4,9 @@ set -e
 AUTH_DIR="/root/.local/share/opencode"
 CONFIG_FILE="/root/opencode.json"
 WORKSPACE="/root/workspace"
+CACHE_DIR="/root/.cache/projects"
 
-mkdir -p "$AUTH_DIR" "$WORKSPACE"
+mkdir -p "$AUTH_DIR" "$WORKSPACE" "$CACHE_DIR"
 
 # ✓ API Keys
 HAS_KEY=0; AUTH_JSON="{"; SEP=""
@@ -70,28 +71,63 @@ echo "✓ Workspace: $WORKSPACE"
 # ✓ Servidor de preview estático
 (
   cd "$WORKSPACE"
-  while true; do
-    # Servidor HTTP simple para preview
-    python3 -m http.server 8080 --bind 0.0.0.0 >/tmp/preview.log 2>&1 &
-    PREVIEW_PID=$!
-    echo "✓ Preview: :8080"
-    wait $PREVIEW_PID
-    sleep 5
-  done
+  python3 -m http.server 8080 --bind 0.0.0.0 >/tmp/preview.log 2>&1 &
+  echo "✓ Preview: :8080"
 ) &
 
-# ✓ Watcher dev server
+# ✓ Watcher dev server (con cache externo)
 (
-  DEV_PID=""; FAIL=0
-  while sleep 10; do
+  DEV_PID=""; FAIL=0; INSTALLING=0
+  while sleep 15; do
     cd "$WORKSPACE" 2>/dev/null || continue
     [ ! -f "package.json" ] && continue
     { [ ! -d "src" ] && [ ! -f "index.html" ] && [ ! -f "index.js" ]; } && continue
-    [ ! -d "node_modules" ] && npm install --silent 2>&1 | tail -1
+    
+    # Detectar nombre del proyecto
+    PROJECT_NAME=$(node -e "try{console.log(require('./package.json').name||'default')}catch(e){console.log('default')}" 2>/dev/null || echo "default")
+    PROJECT_CACHE="$CACHE_DIR/$PROJECT_NAME"
+    
+    # Instalar dependencias en cache si no existen
+    if [ ! -d "$PROJECT_CACHE/node_modules" ] && [ $INSTALLING -eq 0 ]; then
+      INSTALLING=1
+      echo "→ Instalando $PROJECT_NAME en cache (esto puede tardar)..."
+      mkdir -p "$PROJECT_CACHE"
+      cp package.json "$PROJECT_CACHE/" 2>/dev/null
+      [ -f "package-lock.json" ] && cp package-lock.json "$PROJECT_CACHE/" 2>/dev/null
+      cd "$PROJECT_CACHE"
+      NODE_OPTIONS="--max-old-space-size=512" npm install --prefer-offline --no-audit --no-fund --loglevel=error 2>&1 | tail -5
+      cd "$WORKSPACE"
+      # Crear symlink desde workspace a cache
+      [ ! -L "node_modules" ] && ln -sf "$PROJECT_CACHE/node_modules" node_modules
+      echo "✓ Dependencias instaladas en: $PROJECT_CACHE"
+      INSTALLING=0
+      sleep 5
+    fi
+    
+    # Crear symlink si no existe
+    if [ ! -L "node_modules" ] && [ -d "$PROJECT_CACHE/node_modules" ]; then
+      ln -sf "$PROJECT_CACHE/node_modules" node_modules
+    fi
+    
     [ $FAIL -ge 3 ] && { sleep 60; FAIL=0; continue; }
+    
+    # Iniciar dev server solo si no está corriendo
     if [ -z "$DEV_PID" ] || ! kill -0 "$DEV_PID" 2>/dev/null; then
       HAS=$(node -e "try{const s=require('./package.json').scripts;console.log(s&&(s.dev||s.start)?'y':'n')}catch(e){console.log('n')}" 2>/dev/null || echo "n")
-      [ "$HAS" = "y" ] && { PORT=5173 npm run dev -- --host 0.0.0.0 --port 5173 >/tmp/dev.log 2>&1 & DEV_PID=$!; sleep 5; kill -0 "$DEV_PID" 2>/dev/null || { FAIL=$((FAIL+1)); DEV_PID=""; }; }
+      if [ "$HAS" = "y" ] && [ -L "node_modules" ]; then
+        echo "→ Iniciando dev server..."
+        NODE_OPTIONS="--max-old-space-size=512" PORT=5173 npm run dev -- --host 0.0.0.0 --port 5173 >/tmp/dev.log 2>&1 & 
+        DEV_PID=$!
+        sleep 8
+        if ! kill -0 "$DEV_PID" 2>/dev/null; then
+          FAIL=$((FAIL+1))
+          DEV_PID=""
+          echo "❌ Dev server falló (intento $FAIL/3)"
+        else
+          echo "✓ Dev server: :5173"
+          FAIL=0
+        fi
+      fi
     fi
   done
 ) &
