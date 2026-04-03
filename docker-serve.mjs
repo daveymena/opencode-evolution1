@@ -24,8 +24,14 @@ const SEARCH_DIRS = [
 let STATIC_DIR = null;
 for (const dir of SEARCH_DIRS) {
   if (existsSync(dir)) {
-    STATIC_DIR = dir;
-    break;
+    // Verificar si el directorio tiene index.html o si está dentro de public/
+    if (existsSync(join(dir, 'index.html'))) {
+      STATIC_DIR = dir;
+      break;
+    } else if (existsSync(join(dir, 'public', 'index.html'))) {
+      STATIC_DIR = join(dir, 'public');
+      break;
+    }
   }
 }
 
