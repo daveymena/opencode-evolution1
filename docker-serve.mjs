@@ -51,15 +51,60 @@ if (!STATIC_DIR) {
   process.exit(1);
 }
 
+// Puerto para proxy al backend
+const API_PORT = process.env.API_PORT || 5000;
+
 // Servidor HTTP simple sin express
 const server = http.createServer(async (req, res) => {
-  // Health check endpoint
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+  // 1. Proxy API requests (Redirigir /api al backend)
+  if (req.url.startsWith('/api') || req.url.startsWith('/auth')) {
+    const options = {
+      hostname: 'localhost',
+      port: API_PORT,
+      path: req.url,
+      method: req.method,
+      headers: req.headers
+    };
+
+    const proxy = http.request(options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res);
+    });
+
+    req.pipe(proxy);
+
+    proxy.on('error', (err) => {
+      console.error(`❌ Error en Proxy (${req.url}): ${err.message}`);
+      // Si el backend no está listo, intentamos servir index.html (fallback SPA)
+      // para evitar el error de JSON inesperado si es una ruta de navegación
+      handleNotFound(req, res);
+    });
     return;
   }
 
+  // Health check endpoint (Local para el proxy o docker)
+  if (req.url === '/health' || req.url === '/api/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', server: 'static', timestamp: new Date().toISOString() }));
+    return;
+  }
+
+  handleRequest(req, res);
+});
+
+async function handleNotFound(req, res) {
+  const indexPath = join(STATIC_DIR, 'index.html');
+  try {
+    const indexContent = await readFile(indexPath);
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(indexContent);
+  } catch {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+}
+
+async function handleRequest(req, res) {
   // Skip query strings for file lookup
   const urlPath = req.url.split('?')[0];
   const url = urlPath === '/' ? '/index.html' : urlPath;
@@ -87,18 +132,9 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(content);
   } catch {
-    // SPA fallback - serve index.html
-    const indexPath = join(STATIC_DIR, 'index.html');
-    try {
-      const indexContent = await readFile(indexPath);
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(indexContent);
-    } catch {
-      res.writeHead(404);
-      res.end('Not found');
-    }
+    handleNotFound(req, res);
   }
-});
+}
 
 server.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);

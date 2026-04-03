@@ -39,30 +39,37 @@ start_static_server() {
     echo "✅ Servidor estático iniciado (PID: $STATIC_PID)"
 }
 
+# Configurar puerto de la API
+export API_PORT=${API_PORT:-5000}
+
 # Función para iniciar el servidor API
 start_api_server() {
-    if [ -f "artifacts/api-server/dist/index.js" ]; then
-        echo "✅ Servidor API encontrado: artifacts/api-server/dist/index.js"
-        echo "🚀 Iniciando servidor API..."
-        node artifacts/api-server/dist/index.js &
-        API_PID=$!
-        echo "✅ Servidor API iniciado (PID: $API_PID)"
-    elif [ -f "api-server/dist/index.js" ]; then
-        echo "✅ Servidor API encontrado: api-server/dist/index.js"
-        echo "🚀 Iniciando servidor API..."
-        node api-server/dist/index.js &
+    # Preferimos index.mjs (formato nuevo de build) pero soportamos index.js
+    API_BIN=""
+    if [ -f "artifacts/api-server/dist/index.mjs" ]; then
+        API_BIN="artifacts/api-server/dist/index.mjs"
+    elif [ -f "artifacts/api-server/dist/index.js" ]; then
+        API_BIN="artifacts/api-server/dist/index.js"
+    elif [ -f "api-server/dist/index.mjs" ]; then
+        API_BIN="api-server/dist/index.mjs"
+    fi
+
+    if [ -n "$API_BIN" ]; then
+        echo "✅ Servidor API encontrado en: $API_BIN"
+        echo "🚀 Iniciando servidor API en puerto $API_PORT..."
+        PORT=$API_PORT node "$API_BIN" &
         API_PID=$!
         echo "✅ Servidor API iniciado (PID: $API_PID)"
     else
         echo "🔨 Construyendo el servidor API..."
         pnpm --filter @workspace/api-server run build || true
-        if [ -f "artifacts/api-server/dist/index.js" ]; then
-            echo "🚀 Iniciando servidor API..."
-            node artifacts/api-server/dist/index.js &
+        # Re-verificar después de build
+        if [ -f "artifacts/api-server/dist/index.mjs" ]; then
+            PORT=$API_PORT node artifacts/api-server/dist/index.mjs &
             API_PID=$!
             echo "✅ Servidor API iniciado (PID: $API_PID)"
         else
-            echo "⚠️  No se pudo construir el servidor API"
+            echo "⚠️  No se pudo encontrar o construir el servidor API"
         fi
     fi
 }
