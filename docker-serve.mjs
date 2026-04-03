@@ -11,7 +11,23 @@ import { readFile } from 'fs/promises';
 
 // Configuración
 const PORT = process.env.PORT || 3000;
-const STATIC_DIR = join(process.cwd(), 'dist');
+
+// Buscar directorio dist en múltiples ubicaciones
+const SEARCH_DIRS = [
+  join(process.cwd(), 'dist'),
+  join(process.cwd(), 'artifacts', 'opencode-ui', 'dist'),
+  join(process.cwd(), 'artifacts', 'opencode-evolved', 'dist'),
+  join(process.cwd(), 'opencode-ui', 'dist'),
+  join(process.cwd(), '..', 'dist'),
+];
+
+let STATIC_DIR = null;
+for (const dir of SEARCH_DIRS) {
+  if (existsSync(dir)) {
+    STATIC_DIR = dir;
+    break;
+  }
+}
 
 console.log('╔═══════════════════════════════════════════════════════════╗');
 console.log('║  OpenCode Evolution - Server v4 (Standalone)             ║');
@@ -19,13 +35,13 @@ console.log('╚═════════════════════�
 console.log('');
 console.log(`📁 Directorio: ${process.cwd()}`);
 console.log(`🔌 Puerto: ${PORT}`);
-console.log(`📂 Static: ${STATIC_DIR}`);
+console.log(`📂 Static: ${STATIC_DIR || 'NO ENCONTRADO'}`);
 console.log('');
 
 // Verificar si el build existe
-if (!existsSync(STATIC_DIR)) {
+if (!STATIC_DIR) {
   console.error('❌ No se encontró el directorio dist/');
-  console.error('   Ejecuta: npm run build');
+  console.error('   Buscado en:', SEARCH_DIRS.join(', '));
   process.exit(1);
 }
 
