@@ -31,19 +31,45 @@ if [ ! -d "node_modules" ]; then
     pnpm install --no-frozen-lockfile || npm install
 fi
 
-# Verificar si el servidor está compilado
-if [ -f "artifacts/api-server/dist/index.js" ]; then
-    echo "✅ Servidor encontrado: artifacts/api-server/dist/index.js"
-    echo "🚀 Iniciando servidor..."
-    exec node artifacts/api-server/dist/index.js
-elif [ -f "api-server/dist/index.js" ]; then
-    echo "✅ Servidor encontrado: api-server/dist/index.js"
-    echo "🚀 Iniciando servidor..."
-    exec node api-server/dist/index.js
-else
-    echo "🔨 Construyendo el servidor..."
-    pnpm --filter @workspace/api-server run build || true
+# Función para iniciar el servidor estático
+start_static_server() {
+    echo "📦 Iniciando servidor estático (frontend)..."
+    node docker-serve.mjs &
+    STATIC_PID=$!
+    echo "✅ Servidor estático iniciado (PID: $STATIC_PID)"
+}
 
-    echo "🚀 Iniciando con pnpm..."
-    exec pnpm --filter @workspace/api-server run start
-fi
+# Función para iniciar el servidor API
+start_api_server() {
+    if [ -f "artifacts/api-server/dist/index.js" ]; then
+        echo "✅ Servidor API encontrado: artifacts/api-server/dist/index.js"
+        echo "🚀 Iniciando servidor API..."
+        node artifacts/api-server/dist/index.js &
+        API_PID=$!
+        echo "✅ Servidor API iniciado (PID: $API_PID)"
+    elif [ -f "api-server/dist/index.js" ]; then
+        echo "✅ Servidor API encontrado: api-server/dist/index.js"
+        echo "🚀 Iniciando servidor API..."
+        node api-server/dist/index.js &
+        API_PID=$!
+        echo "✅ Servidor API iniciado (PID: $API_PID)"
+    else
+        echo "🔨 Construyendo el servidor API..."
+        pnpm --filter @workspace/api-server run build || true
+        if [ -f "artifacts/api-server/dist/index.js" ]; then
+            echo "🚀 Iniciando servidor API..."
+            node artifacts/api-server/dist/index.js &
+            API_PID=$!
+            echo "✅ Servidor API iniciado (PID: $API_PID)"
+        else
+            echo "⚠️  No se pudo construir el servidor API"
+        fi
+    fi
+}
+
+# Iniciar ambos servidores
+start_static_server
+start_api_server
+
+# Esperar a que todos los procesos terminen
+wait

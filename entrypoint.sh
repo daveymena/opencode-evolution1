@@ -137,16 +137,7 @@ echo "[entrypoint] Workspace listo: $WORKSPACE"
 echo "[entrypoint] Verificando dependencias..."
 cd /app
 
-# Instalar TODOS los paquetes necesarios (no solo devDependencies)
-if ! node -e "require('express')" 2>/dev/null; then
-  echo "[entrypoint] Instalando express y dependencias..."
-  npm install express http-proxy-middleware --save 2>&1 | tail -3
-fi
-
-if ! node -e "require('http-proxy-middleware')" 2>/dev/null; then
-  echo "[entrypoint] Instalando http-proxy-middleware..."
-  npm install http-proxy-middleware --save 2>&1 | tail -3
-fi
+# docker-serve.mjs ya no requiere express - usa Node.js nativo
 
 # 6. Lanzar OpenCode Evolved (Frontend + Proxy)
 echo "[entrypoint] Iniciando OpenCode Evolved (Frontend + Proxy) en :3000"
