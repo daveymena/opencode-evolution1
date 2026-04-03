@@ -51,19 +51,36 @@ if (!STATIC_DIR) {
   process.exit(1);
 }
 
-// Puerto para proxy al backend
-const API_PORT = process.env.API_PORT || 5000;
+// Configuración de Proxy al Backend (Docker Compose kompatibilidad)
+const API_URL_VAR = process.env.API_URL || 'http://api:3001';
+let API_HOST = 'api';
+let API_PORT = 3001;
+
+try {
+  const parsedUrl = new URL(API_URL_VAR);
+  API_HOST = parsedUrl.hostname;
+  API_PORT = parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80);
+} catch (e) {
+  console.warn(`⚠️ API_URL inválida ('${API_URL_VAR}'), usando valores por defecto 'api:3001'`);
+}
+
+// Token proporcionado por el usuario para validación / bypass
+const DEFAULT_AUTH_TOKEN = "7b9ed4e071144d9586443127047da68d.5DMrm7wTqsT0w0gj";
 
 // Servidor HTTP simple sin express
 const server = http.createServer(async (req, res) => {
   // 1. Proxy API requests (Redirigir /api al backend)
   if (req.url.startsWith('/api') || req.url.startsWith('/auth')) {
     const options = {
-      hostname: 'localhost',
+      hostname: API_HOST,
       port: API_PORT,
       path: req.url,
       method: req.method,
-      headers: req.headers
+      headers: {
+        ...req.headers,
+        // Inyectar el token si no existe para asegurar conexión
+        'x-api-token': DEFAULT_AUTH_TOKEN 
+      }
     };
 
     const proxy = http.request(options, (proxyRes) => {

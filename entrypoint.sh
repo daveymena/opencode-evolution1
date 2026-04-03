@@ -67,7 +67,20 @@ else
 fi
 echo "✓ Workspace: $WORKSPACE"
 
-# ✓ Watcher
+# ✓ Servidor de preview estático
+(
+  cd "$WORKSPACE"
+  while true; do
+    # Servidor HTTP simple para preview
+    python3 -m http.server 8080 --bind 0.0.0.0 >/tmp/preview.log 2>&1 &
+    PREVIEW_PID=$!
+    echo "✓ Preview: :8080"
+    wait $PREVIEW_PID
+    sleep 5
+  done
+) &
+
+# ✓ Watcher dev server
 (
   DEV_PID=""; FAIL=0
   while sleep 10; do

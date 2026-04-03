@@ -65,6 +65,7 @@ RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 3000
 EXPOSE 5173
+EXPOSE 8080
 
 VOLUME ["/root/.local/share/opencode", "/root/workspace", "/root/projects"]
 
