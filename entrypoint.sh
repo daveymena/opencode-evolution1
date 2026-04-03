@@ -4,11 +4,10 @@ set -e
 AUTH_DIR="/root/.local/share/opencode"
 CONFIG_FILE="/root/opencode.json"
 WORKSPACE="/root/workspace"
-PROJECTS="/root/projects"
 
-mkdir -p "$AUTH_DIR" "$WORKSPACE" "$PROJECTS"
+mkdir -p "$AUTH_DIR" "$WORKSPACE"
 
-# 1. auth.json
+# ✓ API Keys
 HAS_KEY=0; AUTH_JSON="{"; SEP=""
 add_key() { AUTH_JSON="${AUTH_JSON}${SEP}\"${1}\":{\"api_key\":\"${2}\"}"; SEP=","; HAS_KEY=1; }
 [ -n "$OPENAI_API_KEY" ]     && add_key "openai"     "$OPENAI_API_KEY"
@@ -19,14 +18,16 @@ add_key() { AUTH_JSON="${AUTH_JSON}${SEP}\"${1}\":{\"api_key\":\"${2}\"}"; SEP="
 [ -n "$MISTRAL_API_KEY" ]    && add_key "mistral"    "$MISTRAL_API_KEY"
 [ -n "$GROQ_API_KEY" ]       && add_key "groq"       "$GROQ_API_KEY"
 [ -n "$OPENROUTER_API_KEY" ] && add_key "openrouter" "$OPENROUTER_API_KEY"
+[ -n "$OPENCODE_API_KEY" ]   && add_key "opencode"   "$OPENCODE_API_KEY"
 AUTH_JSON="${AUTH_JSON}}"
-[ $HAS_KEY -eq 1 ] && echo "$AUTH_JSON" > "$AUTH_DIR/auth.json" && echo "[entrypoint] auth.json OK"
+[ $HAS_KEY -eq 1 ] && echo "$AUTH_JSON" > "$AUTH_DIR/auth.json" && echo "✓ API keys OK"
 
-# 2. opencode.json
+# ✓ Config
 cat > "$CONFIG_FILE" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
+    "opencode":   { "options": { "apiKey": "{env:OPENCODE_API_KEY}" } },
     "openai":     { "options": { "apiKey": "{env:OPENAI_API_KEY}" } },
     "anthropic":  { "options": { "apiKey": "{env:ANTHROPIC_API_KEY}" } },
     "google":     { "options": { "apiKey": "{env:GOOGLE_API_KEY}" } },
@@ -40,112 +41,63 @@ cat > "$CONFIG_FILE" << 'EOF'
 }
 EOF
 
-if [ -n "$ANTHROPIC_API_KEY" ]; then
-  DEFAULT_MODEL="anthropic/claude-sonnet-4-5"
-elif [ -n "$GOOGLE_API_KEY" ]; then
-  DEFAULT_MODEL="google/gemini-2.5-flash"
-elif [ -n "$OPENAI_API_KEY" ]; then
-  DEFAULT_MODEL="openai/gpt-4o"
-elif [ -n "$OPENROUTER_API_KEY" ]; then
-  DEFAULT_MODEL="openrouter/anthropic/claude-sonnet-4-5"
-fi
+DEFAULT_MODEL=""
+[ -n "$OPENCODE_API_KEY" ]   && DEFAULT_MODEL="opencode/big-pickle"
+[ -n "$ANTHROPIC_API_KEY" ]  && DEFAULT_MODEL="anthropic/claude-sonnet-4-5"
+[ -n "$GOOGLE_API_KEY" ]     && DEFAULT_MODEL="google/gemini-2.5-flash"
+[ -n "$OPENAI_API_KEY" ]     && DEFAULT_MODEL="openai/gpt-4o"
+[ -n "$DEFAULT_MODEL" ] && node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('$CONFIG_FILE','utf8'));c.model='$DEFAULT_MODEL';fs.writeFileSync('$CONFIG_FILE',JSON.stringify(c,null,2));" 2>/dev/null && echo "✓ Modelo: $DEFAULT_MODEL"
 
-if [ -n "$DEFAULT_MODEL" ]; then
-  node -e "
-    const fs = require('fs');
-    const cfg = JSON.parse(fs.readFileSync('$CONFIG_FILE','utf8'));
-    cfg.model = '$DEFAULT_MODEL';
-    fs.writeFileSync('$CONFIG_FILE', JSON.stringify(cfg, null, 2));
-  " 2>/dev/null && echo "[entrypoint] Modelo por defecto: $DEFAULT_MODEL"
-fi
-echo "[entrypoint] opencode.json OK"
-
-# 3. Git workspace
-git config --global user.name  "${GIT_USER_NAME:-OpenCode Bot}"
-git config --global user.email "${GIT_USER_EMAIL:-opencode@localhost}"
+# ✓ Git
+git config --global user.name  "${GIT_USER_NAME:-OpenCode}"
+git config --global user.email "${GIT_USER_EMAIL:-bot@opencode.local}"
 git config --global --add safe.directory "$WORKSPACE"
-git config --global --add safe.directory "$PROJECTS"
 git config --global init.defaultBranch main
-
-if [ -n "$GIT_TOKEN" ] && [ -n "$GIT_REPO_URL" ]; then
-  GIT_HOST=$(echo "$GIT_REPO_URL" | sed 's|https://||' | sed 's|/.*||')
-  git config --global credential.helper store
-  echo "https://oauth2:${GIT_TOKEN}@${GIT_HOST}" > /root/.git-credentials
-  chmod 600 /root/.git-credentials
-fi
-
-EFFECTIVE_REPO_URL="$GIT_REPO_URL"
-if [ -n "$GIT_TOKEN" ] && [ -n "$GIT_REPO_URL" ]; then
-  EFFECTIVE_REPO_URL=$(echo "$GIT_REPO_URL" | sed "s|https://|https://${GIT_TOKEN}@|")
-fi
 
 cd "$WORKSPACE"
 if [ -n "$GIT_REPO_URL" ]; then
   if [ ! -d ".git" ]; then
-    echo "[entrypoint] Clonando $GIT_REPO_URL ..."
-    git clone "$EFFECTIVE_REPO_URL" . 2>&1 || { git init; git remote add origin "$EFFECTIVE_REPO_URL"; }
+    echo "→ Clonando repo..."
+    git clone "$GIT_REPO_URL" . 2>&1 | tail -1 || { git init; git remote add origin "$GIT_REPO_URL"; }
   else
-    git remote set-url origin "$EFFECTIVE_REPO_URL" 2>/dev/null || true
-    echo "[entrypoint] Pull del repo..."
-    git pull origin "${GIT_BRANCH:-main}" --rebase 2>&1 || true
+    git pull origin "${GIT_BRANCH:-main}" --rebase 2>&1 | head -1 || true
   fi
 else
-  [ ! -d ".git" ] && git init && git commit --allow-empty -m "init: workspace"
+  [ ! -d ".git" ] && git init && git commit --allow-empty -m "init" 2>/dev/null
 fi
-echo "[entrypoint] Workspace listo: $WORKSPACE"
+echo "✓ Workspace: $WORKSPACE"
 
-# 4. Watcher dev server
+# ✓ Watcher
 (
-  DEV_PID=""
-  FAIL_COUNT=0
-  MAX_FAILS=3
-  while true; do
-    sleep 10
+  DEV_PID=""; FAIL=0
+  while sleep 10; do
     cd "$WORKSPACE" 2>/dev/null || continue
-    if [ ! -f "package.json" ] || { [ ! -d "src" ] && [ ! -f "index.html" ] && [ ! -f "index.js" ]; }; then
-      continue
-    fi
-    if [ ! -d "node_modules" ]; then
-      echo "[watcher] npm install..."
-      npm install --silent 2>&1 | tail -3 || continue
-    fi
-    if [ $FAIL_COUNT -ge $MAX_FAILS ]; then
-      sleep 60
-      continue
-    fi
+    [ ! -f "package.json" ] && continue
+    { [ ! -d "src" ] && [ ! -f "index.html" ] && [ ! -f "index.js" ]; } && continue
+    [ ! -d "node_modules" ] && npm install --silent 2>&1 | tail -1
+    [ $FAIL -ge 3 ] && { sleep 60; FAIL=0; continue; }
     if [ -z "$DEV_PID" ] || ! kill -0 "$DEV_PID" 2>/dev/null; then
-      HAS_SCRIPT=$(node -e "try{const p=require('./package.json');console.log(p.scripts&&(p.scripts.dev||p.scripts.start)?'yes':'no')}catch(e){console.log('no')}" 2>/dev/null || echo "no")
-      if [ "$HAS_SCRIPT" = "yes" ]; then
-        echo "[watcher] Iniciando dev server en :5173..."
-        PORT=5173 npm run dev -- --host 0.0.0.0 --port 5173 > /tmp/devserver.log 2>&1 &
-        DEV_PID=$!
-        sleep 5
-        if ! kill -0 "$DEV_PID" 2>/dev/null; then
-          FAIL_COUNT=$((FAIL_COUNT + 1))
-          echo "[watcher] Dev server falló ($FAIL_COUNT/$MAX_FAILS)"
-          DEV_PID=""
-        else
-          FAIL_COUNT=0
-          echo "[watcher] Dev server corriendo (PID $DEV_PID)"
-        fi
-      fi
+      HAS=$(node -e "try{const s=require('./package.json').scripts;console.log(s&&(s.dev||s.start)?'y':'n')}catch(e){console.log('n')}" 2>/dev/null || echo "n")
+      [ "$HAS" = "y" ] && { PORT=5173 npm run dev -- --host 0.0.0.0 --port 5173 >/tmp/dev.log 2>&1 & DEV_PID=$!; sleep 5; kill -0 "$DEV_PID" 2>/dev/null || { FAIL=$((FAIL+1)); DEV_PID=""; }; }
     fi
   done
 ) &
 
-# 5. Verificar y instalar dependencias si es necesario
-echo "[entrypoint] Verificando dependencias..."
-cd /app
+# ✓ OpenClaw
+if [ -n "$OPENCLAW_GATEWAY_TOKEN" ]; then
+  mkdir -p /root/.openclaw
+  OC_MODEL="opencode/big-pickle"; OC_ENV=""
+  [ -n "$OPENCODE_API_KEY" ]  && OC_ENV="\"OPENCODE_API_KEY\":\"$OPENCODE_API_KEY\""
+  [ -n "$ANTHROPIC_API_KEY" ] && { OC_MODEL="anthropic/claude-sonnet-4-5"; OC_ENV="\"ANTHROPIC_API_KEY\":\"$ANTHROPIC_API_KEY\""; }
+  [ -n "$OPENCLAW_MODEL" ]    && OC_MODEL="$OPENCLAW_MODEL"
+  TELE=""; [ -n "$TELEGRAM_BOT_TOKEN" ] && TELE=",\"channels\":{\"telegram\":{\"botToken\":\"$TELEGRAM_BOT_TOKEN\"}}"
+  cat > /root/.openclaw/openclaw.json << OC
+{"agent":{"model":"$OC_MODEL"},"env":{$OC_ENV},"gateway":{"port":18789,"bind":"lan","auth":{"mode":"token","token":"$OPENCLAW_GATEWAY_TOKEN"}}$TELE}
+OC
+  oclaw gateway --allow-unconfigured --bind lan >/tmp/openclaw.log 2>&1 &
+  echo "✓ OpenClaw: :18789"
+fi
 
-# docker-serve.mjs ya no requiere express - usa Node.js nativo
-
-# 6. Lanzar OpenCode Evolved (Frontend + Proxy) con auto-restart
-echo "[entrypoint] Iniciando OpenCode Evolved (Frontend + Proxy) en :3000"
-cd /app
-
-# Bucle para mantener el servidor vivo
-while true; do
-  echo "[entrypoint] Arrancando servidor..."
-  node docker-serve.mjs || echo "[entrypoint] Servidor detenido, reiniciando en 5s..."
-  sleep 5
-done
+# → OpenCode
+echo "→ OpenCode :3000"
+exec opencode web --hostname 0.0.0.0 --port 3000
