@@ -139,7 +139,13 @@ cd /app
 
 # docker-serve.mjs ya no requiere express - usa Node.js nativo
 
-# 6. Lanzar OpenCode Evolved (Frontend + Proxy)
+# 6. Lanzar OpenCode Evolved (Frontend + Proxy) con auto-restart
 echo "[entrypoint] Iniciando OpenCode Evolved (Frontend + Proxy) en :3000"
 cd /app
-exec node docker-serve.mjs
+
+# Bucle para mantener el servidor vivo
+while true; do
+  echo "[entrypoint] Arrancando servidor..."
+  node docker-serve.mjs || echo "[entrypoint] Servidor detenido, reiniciando en 5s..."
+  sleep 5
+done
