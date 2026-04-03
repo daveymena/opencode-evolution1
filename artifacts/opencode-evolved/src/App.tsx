@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -28,7 +28,9 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={LandingPage} />
+      <Route path="/">
+        <Redirect to="/app" />
+      </Route>
       <Route path="/login" component={LoginPage} />
       <Route path="/app" component={() => <ProtectedRoute component={ChatPage} />} />
       <Route component={NotFound} />
