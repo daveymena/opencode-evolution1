@@ -54,30 +54,37 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const url = req.url === '/' ? '/index.html' : req.url;
+  // Skip query strings for file lookup
+  const urlPath = req.url.split('?')[0];
+  const url = urlPath === '/' ? '/index.html' : urlPath;
   const filePath = join(STATIC_DIR, url);
+
+  const ext = filePath.split('.').pop();
+  const contentType = {
+    'html': 'text/html',
+    'js': 'application/javascript',
+    'css': 'text/css',
+    'json': 'application/json',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    'ico': 'image/x-icon',
+    'woff': 'font/woff',
+    'woff2': 'font/woff2',
+    'ttf': 'font/ttf',
+    'eot': 'application/vnd.ms-fontobject'
+  }[ext] || 'application/octet-stream';
 
   try {
     const content = await readFile(filePath);
-    const ext = filePath.split('.').pop();
-    const contentType = {
-      'html': 'text/html',
-      'js': 'application/javascript',
-      'css': 'text/css',
-      'json': 'application/json',
-      'png': 'image/png',
-      'jpg': 'image/jpeg',
-      'gif': 'image/gif',
-      'svg': 'image/svg+xml',
-      'ico': 'image/x-icon'
-    }[ext] || 'application/octet-stream';
-
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(content);
-  } catch (err) {
-    // Si no encuentra el archivo, servir index.html (SPA)
+  } catch {
+    // SPA fallback - serve index.html
+    const indexPath = join(STATIC_DIR, 'index.html');
     try {
-      const indexContent = await readFile(join(STATIC_DIR, 'index.html'));
+      const indexContent = await readFile(indexPath);
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(indexContent);
     } catch {
