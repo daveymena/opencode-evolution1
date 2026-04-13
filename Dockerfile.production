@@ -1,0 +1,128 @@
+# ============================================================
+# OpenCode Evolution - Dockerfile ULTRA OPTIMIZADO
+# Para EasyPanel - Minimo uso de RAM
+# ============================================================
+
+FROM node:22-alpine AS base
+
+# Habilitar caché de Alpine para builds más rápidos
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# ============================================================
+# ETAPA 1: Instalación de dependencias
+# ============================================================
+FROM base AS deps
+
+# Solo instalar herramientas esenciales para compilar dependencias nativas
+RUN apk add --no-cache python3 make g++ git
+
+# Copiar archivos de configuración de monorepo
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY lib/db/package.json ./lib/db/
+COPY lib/api-zod/package.json ./lib/api-zod/
+
+# Instalar pnpm y dependencias
+RUN npm install -g pnpm && \
+    pnpm install --frozen-lockfile --prefer-offline
+
+# ============================================================
+# ETAPA 2: Builder
+# ============================================================
+FROM base AS builder
+
+# Copiar dependencias instaladas
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/artifacts/api-server/node_modules ./artifacts/api-server/node_modules
+COPY --from=deps /app/lib ./lib
+
+# Copiar código fuente
+COPY . .
+
+# Build del servidor API
+RUN npm install -g pnpm && \
+    pnpm --filter @workspace/api-server run build
+
+# ============================================================
+# ETAPA 3: Runtime - Imagen final mínima
+# ============================================================
+FROM node:22-alpine AS runner
+
+# Instalar solo dependencias runtime esenciales
+RUN apk add --no-cache curl ca-certificates && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 opencode
+
+WORKDIR /app
+
+# Configurar entorno de producción
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV API_PORT=5000
+
+# Crear directorios necesarios con permisos correctos
+RUN mkdir -p /workspace /data /cache && \
+    chown -R opencode:nodejs /app /workspace /data /cache
+
+# Copiar solo los archivos necesarios desde el builder
+COPY --from=builder --chown=opencode:nodejs /app/artifacts/api-server/dist ./dist
+COPY --from=builder --chown=opencode:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=opencode:nodejs /app/artifacts/api-server/node_modules ./api-node_modules
+
+# Copiar archivos estáticos si existen
+COPY --from=builder --chown=opencode:nodejs /app/artifacts/opencode-evolved/dist ./static
+
+# Script de inicio optimizado
+COPY --chown=opencode:nodejs <<'EOF' /app/start.sh
+#!/bin/sh
+set -e
+
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║  OpenCode Evolution - Production Server                  ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+echo ""
+echo "📁 Directorio: $(pwd)"
+echo "🔌 Puerto API: ${API_PORT:-5000}"
+echo "🌐 Puerto Web: ${PORT:-3000}"
+echo "💾 Memoria disponible: $(free -m 2>/dev/null | awk 'NR==2{print $7}' || echo 'N/A') MB"
+echo ""
+
+# Función para monitorear memoria
+monitor_memory() {
+    while true; do
+        sleep 60
+        MEM_USAGE=$(ps aux | grep node | grep -v grep | awk '{sum+=$6} END {print sum/1024}' 2>/dev/null || echo "0")
+        if [ "${MEM_USAGE%.*}" -gt "1500" ]; then
+            echo "⚠️  Alto uso de memoria detectado: ${MEM_USAGE}MB"
+            echo "🧹 Ejecutando limpieza de caché..."
+            echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+        fi
+    done
+}
+
+# Iniciar monitoreo en background
+monitor_memory &
+
+# Iniciar servidor API
+echo "🚀 Iniciando servidor API..."
+exec node --max-old-space-size=1024 \
+          --optimize-for-size \
+          --enable-source-maps \
+          ./dist/index.mjs
+EOF
+
+RUN chmod +x /app/start.sh
+
+# Cambiar a usuario no-root para seguridad
+USER opencode
+
+# Exponer puertos
+EXPOSE 3000 5000
+
+# Healthcheck ligero
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -fs http://localhost:3000/health || exit 1
+
+# Comando de inicio
+CMD ["/app/start.sh"]

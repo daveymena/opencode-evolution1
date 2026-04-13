@@ -1,0 +1,155 @@
+# ============================================================
+# OpenCode Evolution - Docker Compose OPTIMIZADO PARA DISCO
+# Maximiza uso de almacenamiento, minimiza RAM
+# Para EasyPanel con poca RAM pero mucho disco
+# ============================================================
+
+version: '3.8'
+
+services:
+  opencode:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: opencode-evolution
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - API_PORT=5000
+      - DATABASE_URL=${DATABASE_URL}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+      # ============================================================
+      # CONFIGURACIÓN CRÍTICA: Node.js usa DISCO en lugar de RAM
+      # ============================================================
+
+      # Limitar heap de V8 a 512MB (el resto va a swap/disco)
+      - NODE_OPTIONS=--max-old-space-size=512 --max-semi-space-size=32 --optimize-for-size
+
+      # Usar disco para caché de módulos
+      - NPM_CONFIG_CACHE=/cache/npm
+      - PNPM_HOME=/cache/pnpm
+      - NPM_CONFIG_TMP=/tmp/npm
+
+      # Forzar garbage collection más agresiva
+      - UV_THREADPOOL_SIZE=4
+
+    # ============================================================
+    # VOLÚMENES: Todo en disco, nada en RAM
+    # ============================================================
+    volumes:
+      # Workspace: Proyectos del usuario (puede ser gigas de código)
+      - type: bind
+        source: ${WORKSPACE_PATH:-/opt/easypanel/opencode/workspace}
+        target: /workspace
+
+      # Caché de npm/pnpm: En disco, no en contenedor
+      - type: bind
+        source: ${CACHE_PATH:-/opt/easypanel/opencode/cache}
+        target: /cache
+
+      # Datos persistentes
+      - type: bind
+        source: ${DATA_PATH:-/opt/easypanel/opencode/data}
+        target: /data
+
+      # Swap interno del contenedor (tmpfs limitado)
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 256M
+          mode: 1777
+
+    # ============================================================
+    # RECURSOS: Mínima RAM, usa swap de EasyPanel
+    # ============================================================
+    deploy:
+      resources:
+        limits:
+          # Límite estricto de RAM (usa swap cuando se pase)
+          memory: ${MEMORY_LIMIT:-1G}
+          cpus: ${CPU_LIMIT:-1}
+        reservations:
+          memory: ${MEMORY_RESERVATION:-256M}
+          cpus: ${CPU_RESERVATION:-0.5}
+
+    # Configuración de swap del contenedor
+    # Importante: Esto requiere configuración en el host de Docker
+    # Ver EASYPANEL_DISK_SETUP.md para instrucciones
+
+    networks:
+      - opencode-network
+
+  # ============================================================
+  # SERVICIO: Swap en Disco (para extender RAM)
+  # ============================================================
+  # Este servicio opcional crea swap en el volumen de disco
+  # Solo ejecutar si el host no tiene swap configurado
+  swap-manager:
+    image: alpine:latest
+    container_name: opencode-swap
+    restart: "no"
+
+    volumes:
+      - ${DATA_PATH:-/opt/easypanel/opencode/data}:/swap-data
+
+    command: |
+      sh -c '
+        # Crear archivo de swap de 4GB (ajustar según espacio disponible)
+        if [ ! -f /swap-data/swapfile ]; then
+          echo "Creando swap de 4GB en disco..."
+          dd if=/dev/zero of=/swap-data/swapfile bs=1M count=4096
+          chmod 600 /swap-data/swapfile
+          mkswap /swap-data/swapfile
+        fi
+
+        # Activar swap (requiere privilegios)
+        swapon /swap-data/swapfile 2>/dev/null || echo "Swap ya activo o sin privilegios"
+
+        # Mantener contenedor vivo para monitoreo
+        echo "Swap configurado. Monitoreando..."
+        while true; do
+          free -h
+          sleep 300
+        done
+      '
+
+    # Privilegios necesarios para manejar swap
+    privileged: true
+
+    profiles:
+      - swap
+
+# ============================================================
+# RED
+# ============================================================
+networks:
+  opencode-network:
+    driver: bridge
+
+# ============================================================
+# VOLUMENES EXTERNOS (Opcional, para más control)
+# ============================================================
+# Descomentar si prefieres volúmenes Docker en lugar de bind mounts
+#
+# volumes:
+#   opencode-workspace:
+#     driver: local
+#     driver_opts:
+#       type: none
+#       o: bind
+#       device: /opt/easypanel/opencode/workspace
+#
+#   opencode-cache:
+#     driver: local
+#     driver_opts:
+#       type: none
+#       o: bind
+#       device: /opt/easypanel/opencode/cache

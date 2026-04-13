@@ -1,0 +1,228 @@
+# ============================================================
+# OpenCode Evolution - Sandbox Container
+# Contenedor aislado para compilar/ejecutar código
+# Separa la carga de compilación del servicio principal
+# ============================================================
+
+FROM node:22-alpine AS base
+
+# Instalar herramientas de compilación necesarias
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    curl \
+    openjdk21-jdk \
+    go \
+    rust \
+    cargo
+
+WORKDIR /app
+
+# Instalar compiladores adicionales globalmente
+RUN npm install -g \
+    typescript \
+    ts-node \
+    @types/node
+
+# Configurar directorios
+RUN mkdir -p /workspace /tmp/sandbox /cache \
+    && chmod 755 /workspace /tmp/sandbox /cache
+
+# Script de sandbox
+COPY <<'EOF' /app/sandbox-server.mjs
+#!/usr/bin/env node
+import http from 'http';
+import { spawn } from 'child_process';
+import { promises as fs } from 'fs';
+import path from 'path';
+
+const PORT = process.env.SANDBOX_PORT || 8080;
+const MAX_MEMORY = process.env.MAX_MEMORY_PER_BUILD || '512m';
+const TIMEOUT = 30000; // 30 segundos máximo por compilación
+
+// Middleware de seguridad: validar paths
+const sanitizePath = (filePath) => {
+    const resolved = path.resolve('/workspace', filePath);
+    if (!resolved.startsWith('/workspace')) {
+        throw new Error('Path traversal detected');
+    }
+    return resolved;
+};
+
+// Compilar TypeScript
+const compileTypeScript = async (files) => {
+    const results = {};
+    for (const [filename, content] of Object.entries(files)) {
+        if (filename.endsWith('.ts')) {
+            const tempFile = `/tmp/sandbox/${Date.now()}_${filename}`;
+            await fs.mkdir(path.dirname(tempFile), { recursive: true });
+            await fs.writeFile(tempFile, content);
+
+            const result = await new Promise((resolve) => {
+                const proc = spawn('npx', ['tsc', tempFile, '--outDir', '/tmp/sandbox/out'], {
+                    timeout: TIMEOUT,
+                    killSignal: 'SIGTERM'
+                });
+
+                let stdout = '';
+                let stderr = '';
+
+                proc.stdout.on('data', (data) => stdout += data);
+                proc.stderr.on('data', (data) => stderr += data);
+
+                proc.on('close', (code) => {
+                    resolve({
+                        success: code === 0,
+                        output: stdout,
+                        error: stderr,
+                        exitCode: code
+                    });
+                });
+
+                proc.on('error', (err) => {
+                    resolve({
+                        success: false,
+                        error: err.message
+                    });
+                });
+            });
+
+            // Limpiar archivo temporal
+            try { await fs.unlink(tempFile); } catch {}
+
+            results[filename] = result;
+        }
+    }
+    return results;
+};
+
+// Servidor HTTP simple
+const server = http.createServer(async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+
+    // Health check
+    if (req.url === '/health') {
+        res.writeHead(200);
+        res.end(JSON.stringify({ status: 'ok', service: 'sandbox' }));
+        return;
+    }
+
+    // Endpoint de compilación
+    if (req.url === '/compile' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { files, language } = JSON.parse(body);
+
+                if (!files || typeof files !== 'object') {
+                    res.writeHead(400);
+                    res.end(JSON.stringify({ error: 'Invalid files payload' }));
+                    return;
+                }
+
+                console.log(`📝 Compilando ${Object.keys(files).length} archivos (${language})`);
+
+                let result;
+                switch (language) {
+                    case 'typescript':
+                    case 'ts':
+                        result = await compileTypeScript(files);
+                        break;
+                    default:
+                        res.writeHead(400);
+                        res.end(JSON.stringify({ error: 'Unsupported language' }));
+                        return;
+                }
+
+                res.writeHead(200);
+                res.end(JSON.stringify({
+                    success: true,
+                    results: result,
+                    timestamp: new Date().toISOString()
+                }));
+
+            } catch (error) {
+                console.error('Error en compilación:', error);
+                res.writeHead(500);
+                res.end(JSON.stringify({
+                    error: error.message,
+                    success: false
+                }));
+            }
+        });
+        return;
+    }
+
+    // Limpieza de caché
+    if (req.url === '/cleanup' && req.method === 'POST') {
+        try {
+            // Limpiar archivos temporales
+            const files = await fs.readdir('/tmp/sandbox');
+            for (const file of files) {
+                const stat = await fs.stat(path.join('/tmp/sandbox', file));
+                const age = Date.now() - stat.mtime.getTime();
+                // Eliminar archivos mayores a 1 hora
+                if (age > 3600000) {
+                    await fs.unlink(path.join('/tmp/sandbox', file)).catch(() => {});
+                }
+            }
+
+            res.writeHead(200);
+            res.end(JSON.stringify({ status: 'cleanup_complete' }));
+        } catch (error) {
+            res.writeHead(500);
+            res.end(JSON.stringify({ error: error.message }));
+        }
+        return;
+    }
+
+    // 404
+    res.writeHead(404);
+    res.end(JSON.stringify({ error: 'Not found' }));
+});
+
+// Limpieza periódica
+setInterval(async () => {
+    try {
+        const { stdout } = await new Promise((resolve, reject) => {
+            const proc = spawn('df', ['/tmp/sandbox']);
+            let stdout = '';
+            proc.stdout.on('data', data => stdout += data);
+            proc.on('close', code => code === 0 ? resolve({ stdout }) : reject(new Error('df failed')));
+        });
+
+        // Si el uso de disco es alto, limpiar
+        const usage = parseInt(stdout.split('\n')[1]?.split(/\s+/)[4] || '0');
+        if (usage > 80) {
+            console.log('🧹 Limpieza automática: uso de disco alto');
+            const files = await fs.readdir('/tmp/sandbox');
+            for (const file of files) {
+                await fs.unlink(path.join('/tmp/sandbox', file)).catch(() => {});
+            }
+        }
+    } catch (e) {
+        // Ignorar errores de limpieza
+    }
+}, 300000); // Cada 5 minutos
+
+server.listen(PORT, () => {
+    console.log('╔═══════════════════════════════════════════════════════════╗');
+    console.log('║  OpenCode Sandbox Service                                ║');
+    console.log('╚═══════════════════════════════════════════════════════════╝');
+    console.log(`🔌 Puerto: ${PORT}`);
+    console.log(`💾 Max memoria por build: ${MAX_MEMORY}`);
+    console.log('✅ Listo para compilar');
+});
+
+process.on('SIGTERM', () => {
+    console.log('🛑 Cerrando sandbox...');
+    server.close(() => process.exit(0));
+});
+EOF
+
+EXPOSE 8080
+
+CMD ["node", "/app/sandbox-server.mjs"]

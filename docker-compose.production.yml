@@ -1,0 +1,171 @@
+# ============================================================
+# OpenCode Evolution - Docker Compose PRODUCCIÓN
+# Optimizado para EasyPanel - Mínimo uso de RAM
+# ============================================================
+
+version: '3.8'
+
+services:
+  # ============================================================
+  # SERVICIO PRINCIPAL: API + Frontend
+  # ============================================================
+  opencode:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: runner
+    container_name: opencode-evolution
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"   # Puerto principal
+      - "5000:5000"   # Puerto API interno
+
+    environment:
+      # Producción
+      - NODE_ENV=production
+      - PORT=3000
+      - API_PORT=5000
+
+      # Base de datos (requerida)
+      - DATABASE_URL=${DATABASE_URL}
+
+      # Supabase (opcional)
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+
+      # APIs - Priorizar las gratuitas
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - CEREBRAS_API_KEY=${CEREBRAS_API_KEY:-}
+      - TOGETHER_AI_API_KEY=${TOGETHER_AI_API_KEY:-}
+
+      # APIs de pago (opcional)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+      # Límites de memoria para Node.js
+      - NODE_OPTIONS=--max-old-space-size=1024 --optimize-for-size
+
+    volumes:
+      # ============ VOLÚMENES CRÍTICOS PARA PERSISTENCIA ============
+      # Workspace: Aquí se guardan los proyectos del usuario
+      - opencode-workspace:/workspace
+
+      # Datos de la aplicación: Configuraciones, caché, etc
+      - opencode-data:/data
+
+      # Caché de módulos npm para reconstrucciones más rápidas
+      - opencode-npm-cache:/cache/npm
+
+      # Caché de pnpm
+      - opencode-pnpm-store:/root/.local/share/pnpm
+
+    # Límites de recursos - AJUSTAR SEGÚN TU SERVIDOR
+    deploy:
+      resources:
+        limits:
+          # Límite máximo de memoria (ajustar según tu plan en EasyPanel)
+          memory: ${MEMORY_LIMIT:-2G}
+          cpus: ${CPU_LIMIT:-2}
+        reservations:
+          # Reserva mínima para garantizar funcionamiento
+          memory: ${MEMORY_RESERVATION:-512M}
+          cpus: ${CPU_RESERVATION:-0.5}
+
+    # Healthcheck más tolerante
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+    networks:
+      - opencode-network
+
+    # Política de reinicio inteligente
+    deploy:
+      restart_policy:
+        condition: unless-stopped
+        delay: 10s
+        max_attempts: 3
+        window: 60s
+
+  # ============================================================
+  # SERVICIO OPCIONAL: Sandbox aislado
+  # ============================================================
+  # Este servicio maneja la compilación de código en un contenedor separado
+  # para evitar que el servicio principal se quede sin memoria
+  opencode-sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    container_name: opencode-sandbox
+    restart: unless-stopped
+
+    environment:
+      - NODE_ENV=production
+      - SANDBOX_PORT=8080
+      - MAX_MEMORY_PER_BUILD=512M
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - opencode-workspace:/workspace:ro  # Solo lectura desde el sandbox
+      - opencode-sandbox-temp:/tmp/sandbox
+
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+    networks:
+      - opencode-network
+
+    # Este servicio es opcional - puede comentarse si no se necesita
+    profiles:
+      - sandbox
+
+# ============================================================
+# VOLÚMENES PERSISTENTES
+# ============================================================
+volumes:
+  # Workspace: Los proyectos del usuario se guardan aquí
+  opencode-workspace:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${WORKSPACE_PATH:-/opt/opencode/workspace}
+
+  # Datos de la aplicación
+  opencode-data:
+    driver: local
+
+  # Caché de npm para instalaciones más rápidas
+  opencode-npm-cache:
+    driver: local
+
+  # Store de pnpm
+  opencode-pnpm-store:
+    driver: local
+
+  # Temporal para sandbox
+  opencode-sandbox-temp:
+    driver: local
+
+# ============================================================
+# RED
+# ============================================================
+networks:
+  opencode-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
